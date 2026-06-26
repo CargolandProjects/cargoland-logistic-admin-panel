@@ -7,9 +7,12 @@ import {
   createVehicle,
   updateVehicle,
   assignVehicle,
+  assignDriverToVehicle,
+  unassignDriverFromVehicle,
+  getVehicleAssignment,
 } from "@/lib/api/services/vehicles";
 import { toastApiError } from "@/lib/api/form-errors";
-import type { AssignVehicleInput, VehicleInput } from "@/types/vehicle";
+import type { AssignDriverInput, AssignVehicleInput, VehicleInput } from "@/types/vehicle";
 
 export function useVehicles() {
   return useQuery({
@@ -47,10 +50,49 @@ export function useAssignVehicle() {
   return useMutation({
     mutationFn: (body: AssignVehicleInput) => assignVehicle(body),
     onSuccess: () => {
-      toast.success("Vehicle assigned");
+      toast.success("Vehicle assigned to shipment");
       qc.invalidateQueries({ queryKey: qk.vehicles.all });
       qc.invalidateQueries({ queryKey: qk.shipments.all });
     },
     onError: (err) => toastApiError(err, "Could not assign vehicle."),
+  });
+}
+
+export function useAssignDriver() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: AssignDriverInput) => assignDriverToVehicle(body),
+    onSuccess: () => {
+      toast.success("Driver assigned to vehicle");
+      qc.invalidateQueries({ queryKey: qk.vehicles.all });
+      qc.invalidateQueries({ queryKey: qk.drivers.all });
+    },
+    onError: (err) => toastApiError(err, "Could not assign driver."),
+  });
+}
+
+export function useUnassignDriver() {
+  const qc = useQueryClient();
+  return useMutation({
+    // Resolve the current assignment for this vehicle, then unassign by its id.
+    mutationFn: async (vehicleId: string) => {
+      const assignment = await getVehicleAssignment();
+      if (!assignment?.id || assignment.vehicleId !== vehicleId || assignment.unassignedAt) {
+        throw new Error("NO_ACTIVE_ASSIGNMENT");
+      }
+      await unassignDriverFromVehicle({ assignmentId: assignment.id });
+    },
+    onSuccess: () => {
+      toast.success("Driver unassigned");
+      qc.invalidateQueries({ queryKey: qk.vehicles.all });
+      qc.invalidateQueries({ queryKey: qk.drivers.all });
+    },
+    onError: (err) => {
+      if (err instanceof Error && err.message === "NO_ACTIVE_ASSIGNMENT") {
+        toast.info("No active driver assignment for this vehicle.");
+        return;
+      }
+      toastApiError(err, "Could not unassign driver.");
+    },
   });
 }

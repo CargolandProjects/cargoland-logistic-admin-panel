@@ -23,6 +23,7 @@ export interface Pricing {
   oceanFreightRate: string;
   fromWhere: string;
   toWhere: string;
+  isPopularRoute?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

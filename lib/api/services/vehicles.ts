@@ -1,5 +1,13 @@
 import { api, apiList } from "@/lib/api/client";
-import type { AssignVehicleInput, Vehicle, VehicleInput, VehicleStatus } from "@/types/vehicle";
+import type {
+  AssignDriverInput,
+  AssignVehicleInput,
+  UnassignDriverInput,
+  Vehicle,
+  VehicleAssignment,
+  VehicleInput,
+  VehicleStatus,
+} from "@/types/vehicle";
 
 export interface VehicleListParams {
   page?: number;
@@ -45,6 +53,30 @@ export async function updateVehicle(id: string, body: VehicleInput): Promise<Veh
   return api.put<Vehicle>(`/admin/vehicle/${id}`, body);
 }
 
+/** Assign a vehicle to a shipment (by tracking IDs). */
 export async function assignVehicle(body: AssignVehicleInput): Promise<void> {
-  await api.post("/admin/vehicle/assign", body);
+  await api.post("/admin/vehicle/assign-shipment", body);
+}
+
+/** Assign a driver to a vehicle (by UUIDs). */
+export async function assignDriverToVehicle(body: AssignDriverInput): Promise<void> {
+  await api.post("/admin/vehicle/assign-driver", body);
+}
+
+/** Unassign a driver from a vehicle (by assignment id). */
+export async function unassignDriverFromVehicle(body: UnassignDriverInput): Promise<void> {
+  await api.post("/admin/vehicle/unassign-driver", body);
+}
+
+/** Current driver↔vehicle assignment record (single object; UUIDs only). */
+export async function getVehicleAssignment(): Promise<VehicleAssignment | null> {
+  const raw = await api.get<Partial<VehicleAssignment> | null>("/admin/vehicle/vehicle-assignment");
+  if (!raw || typeof raw !== "object") return null;
+  return {
+    id: raw.id ?? "",
+    driverId: raw.driverId ?? "",
+    vehicleId: raw.vehicleId ?? "",
+    assignedAt: raw.assignedAt,
+    unassignedAt: raw.unassignedAt ?? null,
+  };
 }

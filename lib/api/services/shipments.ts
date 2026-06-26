@@ -2,12 +2,15 @@ import { api, apiList } from "@/lib/api/client";
 import { MOCKS, mockDelay } from "@/lib/api/mock/config";
 import { MOCK_SHIPMENTS, mockShipmentDetail } from "@/lib/api/mock/shipments";
 import type {
+  EventLogEntry,
   FlagDelayInput,
+  JourneyStep,
   ReassignDriverInput,
   Shipment,
   ShipmentDetail,
   ShipmentStatus,
   ShipmentType,
+  TelemetryReading,
   UpdateTelemetryInput,
 } from "@/types/shipment";
 
@@ -100,12 +103,152 @@ export async function listShipments(filters: ShipmentFilters = {}): Promise<Ship
   return res.data.map(mapShipment);
 }
 
+// --- Live-detail normalizer ------------------------------------------------
+// The `/admin/shipments/{id}/live` payload shape is only partially known, so we
+// defensively coerce every field and default all nested objects/arrays. This
+// guarantees a fully-formed ShipmentDetail (no `undefined.x` crashes) and
+// renders whatever data is present. Refine the field paths as the shape firms up.
+
+function obj(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+function str(v: unknown): string {
+  return typeof v === "string" ? v : typeof v === "number" || typeof v === "boolean" ? String(v) : "";
+}
+function num(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) return Number(v);
+  return 0;
+}
+function arr(v: unknown): Record<string, unknown>[] {
+  return Array.isArray(v) ? v.map(obj) : [];
+}
+function pick(...vals: unknown[]): string {
+  for (const v of vals) {
+    const s = str(v);
+    if (s) return s;
+  }
+  return "";
+}
+
+function mapJourneyStep(raw: Record<string, unknown>): JourneyStep {
+  const state = str(raw.state ?? raw.status).toLowerCase();
+  return {
+    title: pick(raw.title, raw.name, raw.label),
+    description: pick(raw.description, raw.detail, raw.note),
+    timestamp: pick(raw.timestamp, raw.time, raw.createdAt, raw.date),
+    state:
+      state === "done" || state === "completed"
+        ? "done"
+        : state === "active" || state === "current"
+          ? "active"
+          : "upcoming",
+  };
+}
+
+function mapEvent(raw: Record<string, unknown>, i: number): EventLogEntry {
+  const tone = str(raw.tone).toLowerCase();
+  return {
+    id: pick(raw.id) || String(i),
+    title: pick(raw.title, raw.message, raw.description, raw.event),
+    meta: pick(raw.meta, raw.createdAt, raw.time, raw.source),
+    tone: (["red", "green", "blue", "gray"].includes(tone) ? tone : "blue") as EventLogEntry["tone"],
+  };
+}
+
+function mapTelemetry(raw: Record<string, unknown>): TelemetryReading[] {
+  if (Array.isArray(raw.telemetry)) {
+    return arr(raw.telemetry).map((t) => ({
+      label: str(t.label),
+      value: str(t.value),
+      hint: str(t.hint) || undefined,
+    }));
+  }
+  const readings: TelemetryReading[] = [];
+  const add = (label: string, value: string) => {
+    if (value) readings.push({ label, value });
+  };
+  add("Last GPS ping", pick(raw.lastGpsPing, raw.lastPing));
+  add("GPS Coordinates", str(raw.gpsCoordinates));
+  add("Packages onboard", str(raw.packagesOnboard));
+  add(
+    "Fuel level",
+    raw.fuelLevel != null
+      ? `${str(raw.fuelLevel)}%${raw.fuelRangeKm ? ` · ~${str(raw.fuelRangeKm)}km range` : ""}`
+      : "",
+  );
+  add("Engine status", str(raw.engineStatus));
+  return readings;
+}
+
+function mapShipmentDetail(raw: Record<string, unknown>, id: string): ShipmentDetail {
+  const route = obj(raw.route);
+  const driver = obj(raw.driver);
+  const vehicle = obj(raw.vehicle);
+  const vehicleStatus = obj(raw.vehicleStatus);
+  const pkg = obj(raw.packageDetails);
+  const recipient = obj(raw.recipient);
+
+  return {
+    id: pick(raw.id, id),
+    trackingId: pick(raw.trackingId, raw.shipmentTrackingId, raw.id, id),
+    vehicleId: pick(raw.vehicleId, raw.vehicleTrackingId, vehicle.id),
+    type: coerceType(pick(raw.type, raw.shipmentType)),
+    customer: pick(raw.customer, raw.customerName, raw.fullName),
+    route: {
+      from: pick(route.from, route.origin, raw.routeOrigin, raw.origin),
+      to: pick(route.to, route.destination, raw.routeDestination, raw.destination),
+    },
+    lastUpdated: pick(raw.lastUpdated, raw.updatedAt),
+    status: coerceStatus(pick(raw.status, raw.eventStatus)),
+    bookingRef: pick(raw.bookingRef, raw.bookingReference, raw.booking),
+    fleet: pick(raw.fleet) || "Cargoland Fleet",
+    driver: {
+      name: pick(driver.name, raw.driverName),
+      id: pick(driver.id, raw.driverId),
+      status: pick(driver.status, raw.driverStatus),
+    },
+    vehicle: {
+      model: pick(vehicle.model, raw.vehicleName),
+      plate: pick(vehicle.plate, raw.vehiclePlate),
+    },
+    progress: num(raw.progress ?? raw.completionRate),
+    vehicleStatus: {
+      headline: pick(
+        vehicleStatus.headline,
+        raw.vehicleOperatingNormally ? "Vehicle operating normally" : "",
+      ),
+      subtext: pick(vehicleStatus.subtext),
+      location: pick(vehicleStatus.location, raw.location),
+      speed: pick(vehicleStatus.speed, raw.speed != null ? `${str(raw.speed)} km/h` : ""),
+    },
+    journey: arr(raw.journey ?? raw.timeline).map(mapJourneyStep),
+    telemetry: mapTelemetry(raw),
+    packageDetails: {
+      weight: pick(pkg.weight, raw.weight),
+      content: pick(pkg.content, raw.content, raw.descriptionOfGoods),
+      service: pick(pkg.service, raw.service),
+      fragile: pick(pkg.fragile, raw.fragile),
+      images: Array.isArray(pkg.images)
+        ? (pkg.images as string[])
+        : Array.isArray(raw.images)
+          ? (raw.images as string[])
+          : [],
+    },
+    recipient: {
+      name: pick(recipient.name, raw.receiverName),
+      address: pick(recipient.address, raw.receiverAddress),
+      phone: pick(recipient.phone, raw.receiverNumber),
+    },
+    eventLog: arr(raw.eventLog ?? raw.events).map(mapEvent),
+  };
+}
+
 export async function getShipment(id: string): Promise<ShipmentDetail> {
   if (MOCKS.shipments) return mockDelay(mockShipmentDetail(id));
-  // GET /admin/shipments/{id}/live -> composite detail.
-  // Shape unverified (no seeded data); the backend object is passed through and
-  // is expected to satisfy ShipmentDetail. Refine the mapper once data exists.
-  return api.get<ShipmentDetail>(`/admin/shipments/${id}/live`);
+  // GET /admin/shipments/{id}/live -> composite detail (shape partially known).
+  const raw = await api.get<Record<string, unknown>>(`/admin/shipments/${id}/live`);
+  return mapShipmentDetail(obj(raw), id);
 }
 
 export async function reassignDriver(id: string, body: ReassignDriverInput): Promise<void> {

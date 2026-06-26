@@ -33,7 +33,6 @@ export interface DriverInput {
   licenseExpiry: string;
   nationalId: string;
   yearOfExperience: string;
-  assignToVehicle: string;
   contactName: string;
   contactPhone: string;
   activateAccountImmediately: boolean;

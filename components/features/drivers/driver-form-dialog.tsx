@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,7 +31,6 @@ const schema = z.object({
   licenseExpiry: z.string().min(1, "Required"),
   nationalId: z.string().min(1, "Required"),
   yearOfExperience: z.string().min(1, "Required"),
-  assignToVehicle: z.string().min(1, "Required"),
   contactName: z.string().min(1, "Required"),
   contactPhone: z.string().min(1, "Required"),
   activateAccountImmediately: z.boolean(),
@@ -39,18 +39,21 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-const TEXT_FIELDS: { name: keyof FormValues; label: string }[] = [
+const TEXT_FIELDS: {
+  name: keyof FormValues;
+  label: string;
+  type?: React.HTMLInputTypeAttribute;
+}[] = [
   { name: "firstName", label: "First Name" },
   { name: "lastname", label: "Last Name" },
   { name: "phoneNumber", label: "Phone Number" },
   { name: "emailAddress", label: "Email Address" },
-  { name: "dob", label: "Date of Birth" },
+  { name: "dob", label: "Date of Birth", type: "date" },
   { name: "gender", label: "Gender" },
   { name: "driverLicenseNo", label: "Driver License No." },
   { name: "licenseExpiry", label: "License Expiry" },
   { name: "nationalId", label: "National ID" },
   { name: "yearOfExperience", label: "Years of Experience" },
-  { name: "assignToVehicle", label: "Assign to Vehicle" },
   { name: "contactName", label: "Emergency Contact Name" },
   { name: "contactPhone", label: "Emergency Contact Phone" },
 ];
@@ -87,7 +90,6 @@ export function DriverFormDialog({
       licenseExpiry: initial?.licenseExpiry ?? "",
       nationalId: initial?.nationalId ?? "",
       yearOfExperience: initial?.yearOfExperience ?? "",
-      assignToVehicle: initial?.assignToVehicle ?? "",
       contactName: initial?.contactName ?? "",
       contactPhone: initial?.contactPhone ?? "",
       activateAccountImmediately: initial?.activateAccountImmediately ?? false,
@@ -117,7 +119,7 @@ export function DriverFormDialog({
             {TEXT_FIELDS.map((f) => (
               <div key={f.name} className="space-y-1.5">
                 <Label htmlFor={f.name}>{f.label}</Label>
-                <Input id={f.name} className="h-10" {...register(f.name)} />
+                <Input id={f.name} type={f.type} className="h-10" {...register(f.name)} />
                 {errors[f.name] && (
                   <p className="text-xs text-destructive">{errors[f.name]?.message as string}</p>
                 )}

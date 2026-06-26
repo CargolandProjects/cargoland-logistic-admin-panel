@@ -8,6 +8,7 @@ import {
   createPricing,
   updatePricing,
   deletePricing,
+  setPopularRoute,
 } from "@/lib/api/services/pricing";
 import { toastApiError } from "@/lib/api/form-errors";
 import type { PricingInput } from "@/types/pricing";
@@ -60,5 +61,18 @@ export function useDeletePricing() {
       qc.invalidateQueries({ queryKey: qk.pricing.all });
     },
     onError: (err) => toastApiError(err, "Could not delete pricing."),
+  });
+}
+
+export function useSetPopularRoute() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, isPopularRoute }: { id: string; isPopularRoute: boolean }) =>
+      setPopularRoute(id, isPopularRoute),
+    onSuccess: (_data, { isPopularRoute }) => {
+      toast.success(isPopularRoute ? "Marked as popular route" : "Removed from popular routes");
+      qc.invalidateQueries({ queryKey: qk.pricing.all });
+    },
+    onError: (err) => toastApiError(err, "Could not update popular route."),
   });
 }

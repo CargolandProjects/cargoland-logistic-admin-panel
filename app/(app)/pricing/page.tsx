@@ -18,7 +18,11 @@ export default function PricingPage() {
         title="Pricing Management"
         subtitle="Manage live pricing rules. Changes reflect instantly on the user platform."
         actions={
-          <Button className="bg-brand-red text-white" render={<Link href="/pricing/new" />}>
+          <Button
+            className="bg-brand-red text-white"
+            nativeButton={false}
+            render={<Link href="/pricing/new" />}
+          >
             <Plus className="size-4" /> Add Pricing
           </Button>
         }

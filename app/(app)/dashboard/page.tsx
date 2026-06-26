@@ -73,7 +73,7 @@ export default function DashboardPage() {
         <Card className="p-5 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">Recent Bookings</h2>
+              <h2 className="text-lg font-semibold">Recent Shipment</h2>
               <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
                 Demo
               </span>

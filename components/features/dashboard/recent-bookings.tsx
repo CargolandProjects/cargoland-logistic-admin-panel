@@ -20,6 +20,7 @@ const columns: Column<RecentBooking>[] = [
       <Button
         variant="outline"
         size="sm"
+        nativeButton={false}
         render={<Link href={`/shipments/${r.id.replace("#", "")}`} />}
       >
         View

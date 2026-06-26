@@ -38,15 +38,34 @@ export interface VehicleInput {
   insurancePolicyNo: string;
   roadWorthinessExpiry: string;
   hackneyPermitExpiry: string;
-  assignDriver: string;
   gpsDeviceId: string;
   telemanticProvider: string;
   enableTelemetryAlert: boolean;
   setVehicleStatus: VehicleStatus;
 }
 
-/** POST /admin/vehicle/assign body (AssignShipmentToVehicleDto). */
+/** POST /admin/vehicle/assign-shipment body (AssignShipmentToVehicleDto). */
 export interface AssignVehicleInput {
   shipmentTrackingId: string;
   vehicleTrackingId: string;
+}
+
+/** POST /admin/vehicle/assign-driver body (AssignDriverToVehicleDto). */
+export interface AssignDriverInput {
+  driverId: string;
+  vehicleId: string;
+}
+
+/** POST /admin/vehicle/unassign-driver body (UnassignDriverFromVehicleDto). */
+export interface UnassignDriverInput {
+  assignmentId: string;
+}
+
+/** GET /admin/vehicle/vehicle-assignment -> single record. */
+export interface VehicleAssignment {
+  id: string;
+  driverId: string;
+  vehicleId: string;
+  assignedAt?: string;
+  unassignedAt?: string | null;
 }

@@ -20,17 +20,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PaymentsTable } from "@/components/features/payments/payments-table";
 import { usePayments } from "@/lib/query/hooks/use-payments";
 
+// Values match the backend's uppercase enums (verified from live data).
 const STATUS_OPTIONS = [
   { label: "All Statuses", value: "all" },
-  { label: "Pending", value: "Pending" },
-  { label: "Success", value: "Success" },
-  { label: "Failed", value: "Failed" },
+  { label: "Pending", value: "PENDING" },
+  { label: "Successful", value: "SUCCESS" },
+  { label: "Failed", value: "FAILED" },
 ];
 
 const METHOD_OPTIONS = [
-  { label: "All Method", value: "all" },
-  { label: "Card", value: "Card" },
-  { label: "Bank Transfer", value: "Bank Transfer" },
+  { label: "All Methods", value: "all" },
+  { label: "Card", value: "CARD" },
+  { label: "Bank Transfer", value: "BANK_TRANSFER" },
   { label: "USSD", value: "USSD" },
 ];
 

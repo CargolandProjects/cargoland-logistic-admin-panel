@@ -39,10 +39,35 @@ function mapPayment(raw: RawPayment, i: number): PaymentTransaction {
     bookingRef: raw.bookingRef ?? raw.bookingReference ?? "",
     customer: raw.customer ?? raw.customerName ?? "",
     amount: raw.amount ?? 0,
-    method: (raw.method as PaymentMethod) ?? "Card",
+    method: (raw.method as PaymentMethod) ?? "CARD",
     date: raw.date ?? raw.createdAt ?? "",
-    status: (raw.status as PaymentStatus) ?? "Pending",
+    status: (raw.status as PaymentStatus) ?? "PENDING",
   };
+}
+
+/**
+ * Filter transactions client-side. The backend's `search`/`method` filters are
+ * unreliable (return empty even for matching rows) and mixed-case status/method
+ * values 500, so we fetch unfiltered and narrow here against the real values.
+ */
+function filterTransactions(
+  rows: PaymentTransaction[],
+  filters: PaymentFilters,
+): PaymentTransaction[] {
+  let out = rows;
+  const { search, status, method } = filters;
+  if (search) {
+    const q = search.toLowerCase();
+    out = out.filter(
+      (t) =>
+        t.id.toLowerCase().includes(q) ||
+        t.bookingRef.toLowerCase().includes(q) ||
+        t.customer.toLowerCase().includes(q),
+    );
+  }
+  if (status && status !== "all") out = out.filter((t) => t.status === status);
+  if (method && method !== "all") out = out.filter((t) => t.method === method);
+  return out;
 }
 
 async function getSummary(): Promise<PaymentSummary> {
@@ -52,25 +77,17 @@ async function getSummary(): Promise<PaymentSummary> {
 
 export async function getPayments(filters: PaymentFilters = {}): Promise<PaymentsData> {
   if (MOCKS.payments) {
-    let transactions = MOCK_PAYMENTS.transactions;
-    const { search, status, method } = filters;
-    if (search) {
-      const q = search.toLowerCase();
-      transactions = transactions.filter(
-        (t) => t.bookingRef.toLowerCase().includes(q) || t.customer.toLowerCase().includes(q),
-      );
-    }
-    if (status && status !== "all") transactions = transactions.filter((t) => t.status === status);
-    if (method && method !== "all") transactions = transactions.filter((t) => t.method === method);
-    return mockDelay({ ...MOCK_PAYMENTS, transactions });
+    return mockDelay({
+      ...MOCK_PAYMENTS,
+      transactions: filterTransactions(MOCK_PAYMENTS.transactions, filters),
+    });
   }
 
+  // Fetch unfiltered (only paginate) — server-side search/method are broken and
+  // bad enum casing 500s — then filter client-side against the real values.
   const params = new URLSearchParams();
   params.set("skip", String(filters.skip ?? 0));
-  params.set("take", String(filters.take ?? 10));
-  if (filters.search) params.set("search", filters.search);
-  if (filters.status && filters.status !== "all") params.set("status", filters.status);
-  if (filters.method && filters.method !== "all") params.set("method", filters.method);
+  params.set("take", String(filters.take ?? 100));
 
   const [summary, list] = await Promise.all([
     getSummary(),
@@ -79,6 +96,6 @@ export async function getPayments(filters: PaymentFilters = {}): Promise<Payment
 
   return {
     summary,
-    transactions: list.data.map(mapPayment),
+    transactions: filterTransactions(list.data.map(mapPayment), filters),
   };
 }

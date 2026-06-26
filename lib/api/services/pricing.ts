@@ -38,3 +38,9 @@ export async function deletePricing(id: string): Promise<void> {
   if (MOCKS.pricing) return mockDelay(undefined);
   await api.delete(`/admin/pricing/${id}`);
 }
+
+/** Toggle a pricing rule's "popular route" flag (POST /admin/pricing/popular-route/{id}). */
+export async function setPopularRoute(id: string, isPopularRoute: boolean): Promise<void> {
+  if (MOCKS.pricing) return mockDelay(undefined);
+  await api.post(`/admin/pricing/popular-route/${id}`, { isPopularRoute });
+}

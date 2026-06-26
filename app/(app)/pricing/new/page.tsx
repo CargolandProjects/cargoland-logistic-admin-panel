@@ -6,13 +6,15 @@ import { PricingForm } from "@/components/features/pricing/pricing-form";
 export default function NewPricingPage() {
   return (
     <div className="space-y-6">
-      <Link
-        href="/pricing"
-        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-      >
-        <ChevronLeft className="size-4" /> Back to Pricing
-      </Link>
-      <h1 className="text-xl font-semibold text-foreground">Add Pricing</h1>
+      <div className="flex items-center gap-4">
+        <Link
+          href="/pricing"
+          className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        >
+          <ChevronLeft className="size-4" /> Back
+        </Link>
+        <span className="text-sm font-medium text-muted-foreground">Add New Pricing</span>
+      </div>
       <PricingForm />
     </div>
   );

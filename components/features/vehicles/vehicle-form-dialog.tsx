@@ -39,7 +39,6 @@ const schema = z.object({
   insurancePolicyNo: z.string().min(1, "Required"),
   roadWorthinessExpiry: z.string().min(1, "Required"),
   hackneyPermitExpiry: z.string().min(1, "Required"),
-  assignDriver: z.string().min(1, "Required"),
   gpsDeviceId: z.string().min(1, "Required"),
   telemanticProvider: z.string().min(1, "Required"),
   enableTelemetryAlert: z.boolean(),
@@ -56,7 +55,6 @@ const TEXT_FIELDS: { name: keyof FormValues; label: string }[] = [
   { name: "insurancePolicyNo", label: "Insurance Policy No." },
   { name: "roadWorthinessExpiry", label: "Road Worthiness Expiry" },
   { name: "hackneyPermitExpiry", label: "Hackney Permit Expiry" },
-  { name: "assignDriver", label: "Assign Driver" },
   { name: "gpsDeviceId", label: "GPS Device ID" },
   { name: "telemanticProvider", label: "Telematics Provider" },
 ];
@@ -90,7 +88,6 @@ export function VehicleFormDialog({
       insurancePolicyNo: initial?.insurancePolicyNo ?? "",
       roadWorthinessExpiry: initial?.roadWorthinessExpiry ?? "",
       hackneyPermitExpiry: initial?.hackneyPermitExpiry ?? "",
-      assignDriver: initial?.assignDriver ?? "",
       gpsDeviceId: initial?.gpsDeviceId ?? "",
       telemanticProvider: initial?.telemanticProvider ?? "",
       enableTelemetryAlert: initial?.enableTelemetryAlert ?? false,
