@@ -2,14 +2,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { qk } from "@/lib/query/keys";
-import { listDrivers, createDriver, updateDriver } from "@/lib/api/services/drivers";
+import { listDrivers, getDriver, createDriver, updateDriver } from "@/lib/api/services/drivers";
 import { toastApiError } from "@/lib/api/form-errors";
 import type { DriverInput } from "@/types/driver";
 
 export function useDrivers() {
   return useQuery({
-    queryKey: qk.drivers.list(),
-    queryFn: () => listDrivers(),
+    // High limit so derived counts cover the fleet (no driver stats endpoint).
+    queryKey: qk.drivers.list({ limit: 100 }),
+    queryFn: () => listDrivers({ limit: 100 }),
+  });
+}
+
+export function useDriver(id: string) {
+  return useQuery({
+    queryKey: qk.drivers.detail(id),
+    queryFn: () => getDriver(id),
+    enabled: Boolean(id),
   });
 }
 

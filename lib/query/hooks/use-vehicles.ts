@@ -4,20 +4,47 @@ import { toast } from "sonner";
 import { qk } from "@/lib/query/keys";
 import {
   listVehicles,
+  getVehicle,
   createVehicle,
   updateVehicle,
   assignVehicle,
   assignDriverToVehicle,
   unassignDriverFromVehicle,
   getVehicleAssignment,
+  getVehicleTracking,
+  fleetTracking,
+  singleFleetTracking,
 } from "@/lib/api/services/vehicles";
 import { toastApiError } from "@/lib/api/form-errors";
-import type { AssignDriverInput, AssignVehicleInput, VehicleInput } from "@/types/vehicle";
+import type {
+  AssignDriverInput,
+  AssignVehicleInput,
+  FleetTrackingInput,
+  SingleFleetTrackingInput,
+  VehicleInput,
+} from "@/types/vehicle";
 
 export function useVehicles() {
   return useQuery({
-    queryKey: qk.vehicles.list(),
-    queryFn: () => listVehicles(),
+    // High limit so the derived summary counts cover the fleet (no stats endpoint).
+    queryKey: qk.vehicles.list({ limit: 100 }),
+    queryFn: () => listVehicles({ limit: 100 }),
+  });
+}
+
+export function useVehicle(id: string) {
+  return useQuery({
+    queryKey: qk.vehicles.detail(id),
+    queryFn: () => getVehicle(id),
+    enabled: Boolean(id),
+  });
+}
+
+export function useVehicleTracking(trackingId: string | undefined) {
+  return useQuery({
+    queryKey: qk.vehicles.tracking(trackingId ?? ""),
+    queryFn: () => getVehicleTracking(trackingId as string),
+    enabled: Boolean(trackingId),
   });
 }
 
@@ -55,6 +82,32 @@ export function useAssignVehicle() {
       qc.invalidateQueries({ queryKey: qk.shipments.all });
     },
     onError: (err) => toastApiError(err, "Could not assign vehicle."),
+  });
+}
+
+export function useFleetTracking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: FleetTrackingInput) => fleetTracking(body),
+    onSuccess: (_d, vars) => {
+      toast.success("Fleet tracking updated");
+      qc.invalidateQueries({ queryKey: qk.vehicles.all });
+      qc.invalidateQueries({ queryKey: qk.vehicles.tracking(vars.vehicleTrackingId) });
+    },
+    onError: (err) => toastApiError(err, "Could not update tracking."),
+  });
+}
+
+export function useSingleFleetTracking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SingleFleetTrackingInput) => singleFleetTracking(body),
+    onSuccess: (_d, vars) => {
+      toast.success("Shipment tracking updated");
+      qc.invalidateQueries({ queryKey: qk.vehicles.all });
+      qc.invalidateQueries({ queryKey: qk.vehicles.tracking(vars.vehicleTrackingId) });
+    },
+    onError: (err) => toastApiError(err, "Could not update tracking."),
   });
 }
 

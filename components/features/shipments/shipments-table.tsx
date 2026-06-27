@@ -9,12 +9,12 @@ import { shipmentStatusLabel, type Shipment } from "@/types/shipment";
 
 const columns: Column<Shipment>[] = [
   { header: "Tracking ID", cell: (r) => <span className="font-medium">{r.trackingId}</span> },
-  {
-    header: "Vehicle/Carrier ID",
-    cell: (r) => (
-      <span className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium">{r.vehicleId}</span>
-    ),
-  },
+  // {
+  //   header: "Vehicle/Carrier ID",
+  //   cell: (r) => (
+  //     <span className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium">{r.vehicleId}</span>
+  //   ),
+  // },
   { header: "Type", cell: (r) => <StatusBadge status={r.type} tone="purple" /> },
   { header: "Customer", cell: (r) => r.customer },
   {

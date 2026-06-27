@@ -30,6 +30,7 @@ export const qk = {
     all: ["vehicles"] as const,
     list: (filters?: unknown) => [...qk.vehicles.all, "list", filters ?? {}] as const,
     detail: (id: string) => [...qk.vehicles.all, "detail", id] as const,
+    tracking: (trackingId: string) => [...qk.vehicles.all, "tracking", trackingId] as const,
   },
   drivers: {
     all: ["drivers"] as const,

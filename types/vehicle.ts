@@ -69,3 +69,37 @@ export interface VehicleAssignment {
   assignedAt?: string;
   unassignedAt?: string | null;
 }
+
+/** A shipment/package currently onboard a vehicle (from the tracking endpoint). */
+export interface AssignedShipment {
+  id: string;
+  trackingId: string;
+  customer?: string;
+  destination?: string;
+  contents?: string;
+  status?: string;
+}
+
+/** GET /admin/vehicle/tracking/{vehicleTrackingId} -> data. */
+export interface VehicleTracking {
+  id: string;
+  vehicleTrackingId: string;
+  maximumPackages: string;
+  maximumCapacity: string;
+  totalPackages: number;
+  assignedShipments: AssignedShipment[];
+}
+
+/** POST /admin/vehicle/fleet-tracking/{trackingId}?status=... body { selectedPackages }. */
+export interface FleetTrackingInput {
+  vehicleTrackingId: string;
+  status: import("@/types/shipment").ShipmentStatus;
+  selectedPackages: string[];
+}
+
+/** POST /admin/vehicle/single-fleet-tracking?status=... body { shipmentTrackingId, vehicleTrackingId }. */
+export interface SingleFleetTrackingInput {
+  vehicleTrackingId: string;
+  shipmentTrackingId: string;
+  status: import("@/types/shipment").ShipmentStatus;
+}

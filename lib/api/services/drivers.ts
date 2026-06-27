@@ -40,6 +40,11 @@ export async function listDrivers(params: DriverListParams = {}): Promise<Driver
   return res.data.map(mapDriver);
 }
 
+export async function getDriver(id: string): Promise<Driver> {
+  const raw = await api.get<Partial<Driver> & Record<string, unknown>>(`/admin/drivers/${id}`);
+  return mapDriver(raw, 0);
+}
+
 export async function createDriver(body: DriverInput): Promise<Driver> {
   return api.post<Driver>("/admin/drivers", body);
 }
