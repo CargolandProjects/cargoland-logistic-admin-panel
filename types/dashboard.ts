@@ -1,18 +1,20 @@
+import type { ShipmentStatus, ShipmentType } from "@/types/shipment";
+
 export interface DashboardStat {
   key: string;
   label: string;
   value: string;
   trend?: string;
   trendDirection?: "up" | "down";
-  /** True when this card is backed by mock data (no live endpoint yet). */
-  demo?: boolean;
 }
 
+/** A recent booking row (sourced from recent shipments). */
 export interface RecentBooking {
   id: string;
+  trackingId: string;
   customer: string;
-  type: "Local" | "Int'l" | "Door-to-Door";
-  status: "Pending" | "Approved" | "In transit" | "Delivered" | "Rejected";
+  type: ShipmentType;
+  status: ShipmentStatus;
 }
 
 export interface ActivityItem {

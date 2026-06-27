@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { useDashboard } from "@/lib/query/hooks/use-dashboard";
+import { useProfile } from "@/lib/query/hooks/use-profile";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/shared/stat-card";
@@ -30,6 +31,8 @@ const STAT_ICONS: Record<string, { icon: LucideIcon; className: string }> = {
 
 export default function DashboardPage() {
   const { data, isLoading } = useDashboard();
+  const { data: profile } = useProfile();
+  const firstName = profile?.name?.split(" ")[0] || "there";
 
   const today = new Date().toLocaleDateString("en-GB", {
     weekday: "long",
@@ -41,7 +44,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Hello Sharon</h1>
+        <h1 className="text-2xl font-bold text-foreground">Hello {firstName}</h1>
         <p className="text-sm text-muted-foreground">It&apos;s {today}</p>
       </div>
 
@@ -62,7 +65,6 @@ export default function DashboardPage() {
                   iconClassName={meta?.className}
                   trend={stat.trend}
                   trendDirection={stat.trendDirection}
-                  demo={stat.demo}
                 />
               );
             })}
@@ -72,12 +74,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">Recent Shipment</h2>
-              <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
-                Demo
-              </span>
-            </div>
+            <h2 className="text-lg font-semibold">Recent Bookings</h2>
             <Link
               href="/shipments"
               className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"

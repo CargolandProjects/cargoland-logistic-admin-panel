@@ -23,7 +23,7 @@ export interface ShipmentFilters {
   take?: number;
 }
 
-/** Best-effort shape of a shipment row (unverified — data empty on dev). */
+/** Shape of a shipment list row (verified against live `/admin/shipments`). */
 interface RawShipment {
   id?: string;
   trackingId?: string;
@@ -31,11 +31,17 @@ interface RawShipment {
   carrierId?: string;
   vehicle?: string;
   type?: string;
+  shipmentType?: string;
   customer?: string;
   customerName?: string;
+  fullName?: string;
   route?: { from?: string; to?: string; origin?: string; destination?: string };
   origin?: string;
   destination?: string;
+  stateOrCity?: string;
+  country?: string;
+  receiverStateOrCity?: string;
+  receiverCountry?: string;
   lastUpdated?: string;
   updatedAt?: string;
   status?: string;
@@ -67,11 +73,17 @@ function mapShipment(raw: RawShipment, i: number): Shipment {
     id: raw.id ?? raw.trackingId ?? String(i),
     trackingId: raw.trackingId ?? raw.id ?? "",
     vehicleId: raw.vehicleId ?? raw.carrierId ?? raw.vehicle ?? "",
-    type: coerceType(raw.type),
-    customer: raw.customer ?? raw.customerName ?? "",
+    type: coerceType(raw.type ?? raw.shipmentType),
+    customer: raw.customer ?? raw.customerName ?? raw.fullName ?? "",
     route: {
-      from: raw.route?.from ?? raw.route?.origin ?? raw.origin ?? "",
-      to: raw.route?.to ?? raw.route?.destination ?? raw.destination ?? "",
+      from: raw.route?.from ?? raw.route?.origin ?? raw.origin ?? raw.stateOrCity ?? raw.country ?? "",
+      to:
+        raw.route?.to ??
+        raw.route?.destination ??
+        raw.destination ??
+        raw.receiverStateOrCity ??
+        raw.receiverCountry ??
+        "",
     },
     lastUpdated: raw.lastUpdated ?? raw.updatedAt ?? "",
     status: coerceStatus(raw.status),
@@ -101,6 +113,22 @@ export async function listShipments(filters: ShipmentFilters = {}): Promise<Ship
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
   const res = await apiList.get<RawShipment>(`/admin/shipments?${params.toString()}`);
   return res.data.map(mapShipment);
+}
+
+/** Paged fetch that also exposes the total count (used by the dashboard). */
+export async function getShipmentsPage(
+  filters: ShipmentFilters = {},
+): Promise<{ data: Shipment[]; total: number }> {
+  if (MOCKS.shipments) {
+    const data = await listShipments(filters);
+    return { data, total: data.length };
+  }
+  const params = new URLSearchParams();
+  params.set("skip", String(filters.skip ?? 0));
+  params.set("take", String(filters.take ?? 10));
+  if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  const res = await apiList.get<RawShipment>(`/admin/shipments?${params.toString()}`);
+  return { data: res.data.map(mapShipment), total: res.meta?.total ?? res.data.length };
 }
 
 // --- Live-detail normalizer ------------------------------------------------

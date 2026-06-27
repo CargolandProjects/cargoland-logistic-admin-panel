@@ -2,7 +2,6 @@ import {
   LayoutGrid,
   Truck,
   Warehouse,
-  IdCard,
   Wallet,
   Tag,
   Users,
@@ -36,7 +35,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
       { label: "Shipments", href: "/shipments", icon: Truck, badge: 13 },
       { label: "Fleet", href: "/fleet", icon: Warehouse, badge: 13 },
-      { label: "Drivers", href: "/drivers", icon: IdCard },
     ],
   },
   {

@@ -12,8 +12,6 @@ export const MOCKS = {
   payments: false, // GET /admin/payments(/stats)
   shipments: false, // GET /admin/shipments, /{id}/live, actions
   pricing: false, // GET/POST/PUT/DELETE /admin/pricing
-  // No backend yet — demo data:
-  recentBookings: true, // dashboard Recent Bookings table + Total Bookings/Pending Quotes cards
 } as const;
 
 /** Simulate network latency so loading states are exercised (mock paths only). */

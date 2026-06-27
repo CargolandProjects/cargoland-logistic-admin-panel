@@ -10,10 +10,10 @@ export const MOCK_DASHBOARD: DashboardSummary = {
     { key: "users", label: "Active Users", value: "347", trend: "+12% this week", trendDirection: "up" },
   ],
   recentBookings: [
-    { id: "#BK-0091", customer: "Emeka Obi", type: "Int'l", status: "Pending" },
-    { id: "#BK-0092", customer: "Fatima Yusuf", type: "Local", status: "Approved" },
-    { id: "#BK-0093", customer: "Chidi Nwosu", type: "Int'l", status: "In transit" },
-    { id: "#BK-0094", customer: "Amara Eze", type: "Door-to-Door", status: "In transit" },
+    { id: "BK-0091", trackingId: "CLD-0091", customer: "Emeka Obi", type: "International", status: "PENDING" },
+    { id: "BK-0092", trackingId: "CLD-0092", customer: "Fatima Yusuf", type: "Local", status: "ASSIGNED" },
+    { id: "BK-0093", trackingId: "CLD-0093", customer: "Chidi Nwosu", type: "International", status: "IN_TRANSIT" },
+    { id: "BK-0094", trackingId: "CLD-0094", customer: "Amara Eze", type: "Local", status: "DELIVERED" },
   ],
   activity: [
     { id: "a1", kind: "booking", title: "New booking #BK-0091 submitted", meta: "2 minutes ago · Emeka Obi" },

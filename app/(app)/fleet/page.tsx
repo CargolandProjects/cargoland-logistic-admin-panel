@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { VehicleFormDialog } from "@/components/features/vehicles/vehicle-form-dialog";
 import { AssignVehicleDialog } from "@/components/features/vehicles/assign-vehicle-dialog";
 import { AssignDriverDialog } from "@/components/features/vehicles/assign-driver-dialog";
+import { DriverFormDialog } from "@/components/features/drivers/driver-form-dialog";
 import { useVehicles, useUnassignDriver } from "@/lib/query/hooks/use-vehicles";
 import { VEHICLE_STATUS_LABELS, type Vehicle } from "@/types/vehicle";
 
@@ -33,6 +34,7 @@ export default function FleetPage() {
   const { data, isLoading } = useVehicles();
   const unassignDriver = useUnassignDriver();
   const [addOpen, setAddOpen] = useState(false);
+  const [addDriverOpen, setAddDriverOpen] = useState(false);
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [assignFor, setAssignFor] = useState<Vehicle | null>(null);
   const [assignDriverFor, setAssignDriverFor] = useState<Vehicle | null>(null);
@@ -50,9 +52,14 @@ export default function FleetPage() {
         title="Fleet Management"
         subtitle="Vehicles, telemetry configuration and shipment assignment."
         actions={
-          <Button className="bg-brand-red text-white" onClick={() => setAddOpen(true)}>
-            <Plus className="size-4" /> Add Vehicle
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setAddDriverOpen(true)}>
+              <Plus className="size-4" /> Add Driver
+            </Button>
+            <Button className="bg-brand-red text-white" onClick={() => setAddOpen(true)}>
+              <Plus className="size-4" /> Add Vehicle
+            </Button>
+          </div>
         }
       />
 
@@ -67,8 +74,10 @@ export default function FleetPage() {
         />
       </Card>
 
-      {/* Add */}
+      {/* Add vehicle */}
       <VehicleFormDialog open={addOpen} onOpenChange={setAddOpen} />
+      {/* Add driver (fleet is the only place drivers are managed) */}
+      <DriverFormDialog open={addDriverOpen} onOpenChange={setAddDriverOpen} />
       {/* Edit */}
       <VehicleFormDialog
         key={editing?.id}
