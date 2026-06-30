@@ -1,4 +1,4 @@
-import type { Shipment, ShipmentDetail } from "@/types/shipment";
+import type { Shipment, ShipmentDetail, ShipmentRecord } from "@/types/shipment";
 
 export const MOCK_SHIPMENTS: Shipment[] = [
   {
@@ -42,6 +42,38 @@ export const MOCK_SHIPMENTS: Shipment[] = [
     status: "DELIVERED",
   },
 ];
+
+export function mockShipmentRecord(id: string): ShipmentRecord {
+  const base = MOCK_SHIPMENTS.find((s) => s.id === id) ?? MOCK_SHIPMENTS[0];
+  return {
+    id: base.id,
+    trackingId: base.trackingId,
+    idNumber: "CLD-12345678",
+    freightType: "Air Freight",
+    shipmentType: base.type,
+    invoiceDate: "2026-03-12T00:00:00.000Z",
+    price: "45000",
+    totalWeight: "15",
+    description: "Documents and personal effects",
+    summaryFrom: "Nigeria",
+    summaryTo: "Ghana",
+    sender: {
+      name: "Ajose Joshua",
+      phone: "+234 812 234 2232",
+      address: "24b Royal Estate, Ikeja",
+      city: "Lagos state",
+      country: "Nigeria",
+    },
+    receiver: {
+      name: "Ajose Joshua",
+      phone: "+234 812 234 2232",
+      address: "24b Royal Estate, Ikeja",
+      city: "Lagos state",
+      country: "Ghana",
+    },
+    images: [],
+  };
+}
 
 export function mockShipmentDetail(id: string): ShipmentDetail {
   const base =

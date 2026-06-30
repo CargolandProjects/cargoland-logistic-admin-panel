@@ -5,6 +5,7 @@ import { qk } from "@/lib/query/keys";
 import {
   listShipments,
   getShipment,
+  getShipmentRecord,
   reassignDriver,
   flagDelay,
   updateTelemetry,
@@ -28,6 +29,14 @@ export function useShipment(id: string) {
   return useQuery({
     queryKey: qk.shipments.detail(id),
     queryFn: () => getShipment(id),
+    enabled: Boolean(id),
+  });
+}
+
+export function useShipmentRecord(id: string) {
+  return useQuery({
+    queryKey: qk.shipments.record(id),
+    queryFn: () => getShipmentRecord(id),
     enabled: Boolean(id),
   });
 }

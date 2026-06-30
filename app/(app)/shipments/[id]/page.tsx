@@ -1,4 +1,4 @@
-import { ShipmentDetailView } from "@/components/features/shipments/shipment-detail-view";
+import { ShipmentDetailsView } from "@/components/features/shipments/shipment-details-view";
 
 export default async function ShipmentDetailPage({
   params,
@@ -6,5 +6,5 @@ export default async function ShipmentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ShipmentDetailView id={id} />;
+  return <ShipmentDetailsView id={id} />;
 }

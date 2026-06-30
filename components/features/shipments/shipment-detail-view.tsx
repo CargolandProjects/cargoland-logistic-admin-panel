@@ -86,10 +86,10 @@ export function ShipmentDetailView({ id }: { id: string }) {
       </div>
 
       <Link
-        href="/shipments"
+        href={`/shipments/${id}`}
         className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
       >
-        <ChevronLeft className="size-4" /> Back to Shipments
+        <ChevronLeft className="size-4" /> Back to Shipment Details
       </Link>
 
       {/* Summary strip */}

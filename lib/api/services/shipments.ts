@@ -1,6 +1,6 @@
 import { api, apiList } from "@/lib/api/client";
 import { MOCKS, mockDelay } from "@/lib/api/mock/config";
-import { MOCK_SHIPMENTS, mockShipmentDetail } from "@/lib/api/mock/shipments";
+import { MOCK_SHIPMENTS, mockShipmentDetail, mockShipmentRecord } from "@/lib/api/mock/shipments";
 import type {
   EventLogEntry,
   FlagDelayInput,
@@ -8,6 +8,8 @@ import type {
   ReassignDriverInput,
   Shipment,
   ShipmentDetail,
+  ShipmentImage,
+  ShipmentRecord,
   ShipmentStatus,
   ShipmentType,
   TelemetryReading,
@@ -277,6 +279,52 @@ export async function getShipment(id: string): Promise<ShipmentDetail> {
   // GET /admin/shipments/{id}/live -> composite detail (shape partially known).
   const raw = await api.get<Record<string, unknown>>(`/admin/shipments/${id}/live`);
   return mapShipmentDetail(obj(raw), id);
+}
+
+// --- Booking-summary record (GET /admin/shipments/{id}) ---------------------
+// Distinct from the `/live` tracking payload: the plain shipment document
+// (ShipmentResponseDto). Defensively coerced like the live detail.
+
+function mapShipmentRecord(raw: Record<string, unknown>, id: string): ShipmentRecord {
+  const images: ShipmentImage[] = arr(raw.imageUrl).map((img) => ({
+    url: pick(img.imageUrl, img.url, img.secureUrl),
+    publicId: str(img.publicId),
+  }));
+  return {
+    id: pick(raw.id, id),
+    trackingId: pick(raw.trackingId, raw.id, id),
+    idNumber: pick(raw.id, id),
+    freightType: pick(raw.freightType, raw.shipmentType),
+    shipmentType: pick(raw.shipmentType),
+    invoiceDate: pick(raw.createdAt, raw.pickupDate),
+    price: pick(raw.price),
+    totalWeight: pick(raw.totalShipmentWeight, raw.weight),
+    description: pick(raw.descriptionOfGoods),
+    summaryFrom: pick(raw.country),
+    summaryTo: pick(raw.receiverCountry),
+    sender: {
+      name: pick(raw.fullName),
+      phone: pick(raw.phoneNumber),
+      address: pick(raw.address),
+      city: pick(raw.stateOrCity),
+      country: pick(raw.country),
+    },
+    receiver: {
+      name: pick(raw.receiverName),
+      phone: pick(raw.receiverNumber),
+      address: pick(raw.receiverAddress),
+      city: pick(raw.receiverStateOrCity),
+      country: pick(raw.receiverCountry),
+    },
+    images,
+  };
+}
+
+export async function getShipmentRecord(id: string): Promise<ShipmentRecord> {
+  if (MOCKS.shipments) return mockDelay(mockShipmentRecord(id));
+  // GET /admin/shipments/{id} -> ShipmentResponseDto (the plain shipment doc).
+  const raw = await api.get<Record<string, unknown>>(`/admin/shipments/${id}`);
+  return mapShipmentRecord(obj(raw), id);
 }
 
 export async function reassignDriver(id: string, body: ReassignDriverInput): Promise<void> {

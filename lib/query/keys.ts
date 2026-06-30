@@ -15,6 +15,7 @@ export const qk = {
     all: ["shipments"] as const,
     list: (filters?: unknown) => [...qk.shipments.all, "list", filters ?? {}] as const,
     detail: (id: string) => [...qk.shipments.all, "detail", id] as const,
+    record: (id: string) => [...qk.shipments.all, "record", id] as const,
   },
   pricing: {
     all: ["pricing"] as const,

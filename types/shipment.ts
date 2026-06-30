@@ -42,6 +42,38 @@ export interface Shipment {
   status: ShipmentStatus;
 }
 
+/** A party on a shipment (sender or receiver). */
+export interface ShipmentParty {
+  name: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+}
+
+export interface ShipmentImage {
+  url: string;
+  publicId: string;
+}
+
+/** Booking-summary "Shipment details" view (GET /admin/shipments/{id}). */
+export interface ShipmentRecord {
+  id: string;
+  trackingId: string;
+  idNumber: string;
+  freightType: string;
+  shipmentType: string;
+  invoiceDate: string;
+  price: string;
+  totalWeight: string;
+  description: string;
+  summaryFrom: string;
+  summaryTo: string;
+  sender: ShipmentParty;
+  receiver: ShipmentParty;
+  images: ShipmentImage[];
+}
+
 export interface JourneyStep {
   title: string;
   description: string;

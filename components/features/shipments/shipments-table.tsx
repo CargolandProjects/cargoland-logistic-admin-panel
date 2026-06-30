@@ -34,7 +34,7 @@ export function ShipmentsTable({ data, isLoading }: { data: Shipment[]; isLoadin
 
   const actions: RowAction<Shipment>[] = [
     { label: "View", onSelect: (r) => router.push(`/shipments/${r.id}`) },
-    { label: "Track", onSelect: (r) => router.push(`/shipments/${r.id}`) },
+    { label: "Track", onSelect: (r) => router.push(`/shipments/${r.id}/track`) },
     {
       label: "Delete",
       destructive: true,
