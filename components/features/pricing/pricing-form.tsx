@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plane, Ship, Truck, type LucideIcon } from "lucide-react";
@@ -29,29 +29,12 @@ import {
   PRICING_TYPE_LABELS,
   PRICING_TYPE_OPTIONS,
   type Pricing,
-  type PricingShippingType,
+  type PricingShipmentType,
 } from "@/types/pricing";
-
-// No backend locations source — preset list (values are submitted as plain strings).
-const LOCATIONS = [
-  "Lagos",
-  "Abuja",
-  "Port Harcourt",
-  "Kano",
-  "Ibadan",
-  "Accra",
-  "London",
-  "Dubai",
-  "New York",
-  "Guangzhou",
-];
+import { COUNTRIES, DOMESTIC_COUNTRIES, STATES_BY_COUNTRY, countryForState } from "@/lib/geo";
 
 const schema = z.object({
-  pricingShippingType: z.enum([
-    "INTERNATION_SHIPPING",
-    "LOCAL_SHIPPING",
-    "DOOR_TO_DOOR_SHIPPING",
-  ]),
+  shipmentType: z.enum(["DOMESTIC", "INTERNATIONAL"]),
   fromWhere: z.string().min(1, "Required"),
   toWhere: z.string().min(1, "Required"),
   airFreightRate: z.string().min(1, "Required"),
@@ -82,12 +65,14 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
   const update = useUpdatePricing(initial?.id ?? "");
   const setPopular = useSetPopularRoute();
   const pending = create.isPending || update.isPending;
-  // Popular-route flag (separate POST /admin/pricing/popular-route/{id} endpoint).
   const [isPopular, setIsPopular] = useState(initial?.isPopularRoute ?? false);
+  // Domestic country drives the From/To state options (not a backend field).
+  const [country, setCountry] = useState<string>(
+    () => countryForState(initial?.fromWhere) ?? DOMESTIC_COUNTRIES[0],
+  );
 
   const onTogglePopular = (val: boolean) => {
     setIsPopular(val);
-    // In edit mode persist immediately; in create mode we send it after creation.
     if (initial) setPopular.mutate({ id: initial.id, isPopularRoute: val });
   };
 
@@ -95,11 +80,13 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
     register,
     control,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      pricingShippingType: initial?.pricingShippingType ?? "INTERNATION_SHIPPING",
+      shipmentType: initial?.shipmentType ?? "INTERNATIONAL",
       fromWhere: initial?.fromWhere ?? "",
       toWhere: initial?.toWhere ?? "",
       airFreightRate: initial?.airFreightRate ?? "",
@@ -108,6 +95,23 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
     },
   });
 
+  const shipmentType = watch("shipmentType");
+  const isDomestic = shipmentType === "DOMESTIC";
+  const locationOptions = isDomestic ? STATES_BY_COUNTRY[country] ?? [] : COUNTRIES;
+
+  const onTypeChange = (val: PricingShipmentType) => {
+    setValue("shipmentType", val);
+    // Reset locations so we don't submit a country where a state is expected.
+    setValue("fromWhere", "");
+    setValue("toWhere", "");
+  };
+
+  const onCountryChange = (c: string) => {
+    setCountry(c);
+    setValue("fromWhere", "");
+    setValue("toWhere", "");
+  };
+
   const onSubmit = (values: FormValues) => {
     if (initial) {
       update.mutate(values, { onSuccess: () => router.push("/pricing") });
@@ -115,7 +119,6 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
     }
     create.mutate(values, {
       onSuccess: async (created) => {
-        // Persist the popular-route flag against the newly-created pricing id.
         if (isPopular && created?.id) {
           await setPopular.mutateAsync({ id: created.id, isPopularRoute: true }).catch(() => {});
         }
@@ -129,18 +132,15 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Card className="gap-6 p-6">
-        {/* Header: shipping type + active */}
+        {/* Header: shipment type + popular */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Controller
             control={control}
-            name="pricingShippingType"
+            name="shipmentType"
             render={({ field }) => (
-              <Select
-                value={field.value}
-                onValueChange={(v) => field.onChange(v as PricingShippingType)}
-              >
+              <Select value={field.value} onValueChange={(v) => onTypeChange(v as PricingShipmentType)}>
                 <SelectTrigger className="h-9 w-auto rounded-md bg-indigo-50 font-medium text-indigo-700">
-                  <SelectValue>{(v) => PRICING_TYPE_LABELS[v as PricingShippingType]}</SelectValue>
+                  <SelectValue>{(v) => PRICING_TYPE_LABELS[v as PricingShipmentType]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {PRICING_TYPE_OPTIONS.map((o) => (
@@ -165,20 +165,43 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
           </div>
         </div>
 
-        {/* Add Location */}
-        <div>
-          <h3 className="mb-3 text-base font-semibold text-foreground">Add Location</h3>
+        {/* Add Location (cascades by shipment type) */}
+        <div className="space-y-4">
+          <h3 className="text-base font-semibold text-foreground">Add Location</h3>
+
+          {isDomestic && (
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Country</Label>
+              <Select value={country} onValueChange={(v) => onCountryChange(v as string)}>
+                <SelectTrigger className="mt-1 h-auto w-full border-0 bg-transparent p-0 text-base font-semibold shadow-none focus-visible:ring-0">
+                  <SelectValue>{(v) => (v as string) || "Select country"}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {DOMESTIC_COUNTRIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <LocationField
-              label="From Where"
+              label={isDomestic ? "From (State)" : "From Where"}
+              placeholder={isDomestic ? "Select state" : "Select country"}
               control={control}
               name="fromWhere"
+              options={locationOptions}
               error={errors.fromWhere?.message}
             />
             <LocationField
-              label="To Where"
+              label={isDomestic ? "To (State)" : "To Where"}
+              placeholder={isDomestic ? "Select state" : "Select country"}
               control={control}
               name="toWhere"
+              options={locationOptions}
               error={errors.toWhere?.message}
             />
           </div>
@@ -236,13 +259,17 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
 
 function LocationField({
   label,
+  placeholder,
   name,
+  options,
   control,
   error,
 }: {
   label: string;
+  placeholder: string;
   name: "fromWhere" | "toWhere";
-  control: import("react-hook-form").Control<FormValues>;
+  options: string[];
+  control: Control<FormValues>;
   error?: string;
 }) {
   return (
@@ -254,12 +281,12 @@ function LocationField({
         render={({ field }) => (
           <Select value={field.value} onValueChange={field.onChange}>
             <SelectTrigger className="mt-1 h-auto w-full border-0 bg-transparent p-0 text-base font-semibold shadow-none focus-visible:ring-0">
-              <SelectValue>{(v) => (v ? (v as string) : "Select location")}</SelectValue>
+              <SelectValue>{(v) => (v ? (v as string) : placeholder)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {LOCATIONS.map((l) => (
-                <SelectItem key={l} value={l}>
-                  {l}
+              {options.map((o) => (
+                <SelectItem key={o} value={o}>
+                  {o}
                 </SelectItem>
               ))}
             </SelectContent>

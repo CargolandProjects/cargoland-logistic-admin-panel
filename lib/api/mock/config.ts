@@ -12,6 +12,7 @@ export const MOCKS = {
   payments: false, // GET /admin/payments(/stats)
   shipments: false, // GET /admin/shipments, /{id}/live, actions
   pricing: false, // GET/POST/PUT/DELETE /admin/pricing
+  customers: false, // derived from GET /admin/shipments (no customer-list endpoint)
 } as const;
 
 /** Simulate network latency so loading states are exercised (mock paths only). */

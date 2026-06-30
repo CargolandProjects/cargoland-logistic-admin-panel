@@ -96,7 +96,7 @@ export function VehicleStatusView({ id }: { id: string }) {
               {vehicle.vehicleTrackingId}
             </span>
             <div>
-              {/* <p className="text-sm text-white/80">Driver: {driverName}</p> */}
+              <p className="text-sm text-white/80">Driver: {driverName}</p>
               <p className="text-xs text-white/70">
                 Fuel: {vehicle.fuelType || "—"} · Capacity: {vehicle.maximumCapacity || "—"}
               </p>

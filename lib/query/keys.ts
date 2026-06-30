@@ -42,4 +42,9 @@ export const qk = {
     list: (filters?: unknown) => [...qk.admins.all, "list", filters ?? {}] as const,
     logs: (filters?: unknown) => [...qk.admins.all, "logs", filters ?? {}] as const,
   },
+  customers: {
+    all: ["customers"] as const,
+    list: () => [...qk.customers.all, "list"] as const,
+    detail: (key: string) => [...qk.customers.all, "detail", key] as const,
+  },
 } as const;

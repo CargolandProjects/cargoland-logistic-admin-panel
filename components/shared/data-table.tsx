@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { MoreVertical } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { TablePagination } from "@/components/shared/table-pagination";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +46,8 @@ interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
   emptyMessage?: string;
   isLoading?: boolean;
+  /** When set, paginate client-side at this page size and render a footer pager. */
+  pageSize?: number;
 }
 
 export function DataTable<T>({
@@ -55,11 +58,27 @@ export function DataTable<T>({
   onRowClick,
   emptyMessage = "No records found.",
   isLoading = false,
+  pageSize,
 }: DataTableProps<T>) {
   const colSpan = columns.length + (actions ? 1 : 0);
 
+  const [page, setPage] = useState(1);
+  const pageCount = pageSize ? Math.max(1, Math.ceil(data.length / pageSize)) : 1;
+  // Reset to the first page when the dataset size changes (render-phase, not an
+  // effect — avoids cascading-render lint and is React's recommended pattern).
+  const [prevLength, setPrevLength] = useState(data.length);
+  if (prevLength !== data.length) {
+    setPrevLength(data.length);
+    setPage(1);
+  }
+  const currentPage = Math.min(page, pageCount);
+  const rows = pageSize
+    ? data.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : data;
+
   return (
-    <div className="overflow-x-auto">
+    <div>
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
@@ -92,7 +111,7 @@ export function DataTable<T>({
               </TableCell>
             </TableRow>
           ) : (
-            data.map((row) => (
+            rows.map((row) => (
               <TableRow
                 key={rowKey(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -136,6 +155,10 @@ export function DataTable<T>({
           )}
         </TableBody>
       </Table>
+      </div>
+      {pageSize && !isLoading ? (
+        <TablePagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
+      ) : null}
     </div>
   );
 }

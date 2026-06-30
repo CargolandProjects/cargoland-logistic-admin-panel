@@ -16,11 +16,13 @@ import { TelemetryPanel } from "@/components/features/shipments/telemetry-panel"
 import { EventLog } from "@/components/features/shipments/event-log";
 import { FlagDelayDialog } from "@/components/features/shipments/flag-delay-dialog";
 import { ReassignDriverDialog } from "@/components/features/shipments/reassign-driver-dialog";
+import { AssignShipmentToVehicleDialog } from "@/components/features/shipments/assign-shipment-to-vehicle-dialog";
 
 export function ShipmentDetailView({ id }: { id: string }) {
   const { data: s, isLoading } = useShipment(id);
   const [flagOpen, setFlagOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [assignTruckOpen, setAssignTruckOpen] = useState(false);
 
   if (isLoading || !s) {
     return (
@@ -42,6 +44,14 @@ export function ShipmentDetailView({ id }: { id: string }) {
           Live Tracking — {s.trackingId} ↔ {s.vehicleId} ({s.fleet})
         </h1>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-red-200 text-brand-red"
+            onClick={() => setAssignTruckOpen(true)}
+          >
+            Assign to truck
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -161,6 +171,11 @@ export function ShipmentDetailView({ id }: { id: string }) {
 
       <FlagDelayDialog id={id} open={flagOpen} onOpenChange={setFlagOpen} />
       <ReassignDriverDialog id={id} open={reassignOpen} onOpenChange={setReassignOpen} />
+      <AssignShipmentToVehicleDialog
+        open={assignTruckOpen}
+        onOpenChange={setAssignTruckOpen}
+        shipmentTrackingId={s.trackingId}
+      />
     </div>
   );
 }

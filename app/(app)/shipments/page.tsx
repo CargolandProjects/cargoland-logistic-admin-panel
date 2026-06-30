@@ -13,7 +13,8 @@ export default function ShipmentsPage() {
   const { search, type, status, transport, tab } = useShipmentFilterStore();
 
   const filters = useMemo(
-    () => ({ search, type, status, transport }),
+    // take a generous page so the client-side status tabs + 10/page pager see all rows.
+    () => ({ search, type, status, transport, take: 100 }),
     [search, type, status, transport],
   );
   const { data, isLoading } = useShipments(filters);

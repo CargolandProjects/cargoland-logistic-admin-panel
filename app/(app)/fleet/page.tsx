@@ -22,6 +22,7 @@ import { DataTable, type Column, type RowAction } from "@/components/shared/data
 import { StatusBadge } from "@/components/shared/status-badge";
 import { AssignDriverDialog } from "@/components/features/vehicles/assign-driver-dialog";
 import { FleetTrackingDialog } from "@/components/features/vehicles/fleet-tracking-dialog";
+import { TablePagination } from "@/components/shared/table-pagination";
 import { DriverCard } from "@/components/features/drivers/driver-card";
 import { AssignVehicleToDriverDialog } from "@/components/features/drivers/assign-vehicle-to-driver-dialog";
 import { useVehicles } from "@/lib/query/hooks/use-vehicles";
@@ -91,6 +92,22 @@ export default function FleetPage() {
     return list;
   }, [drivers, driverSearch, driverFilter]);
 
+  // Paginate the driver card grid (10 per page); reset when the filter changes
+  // (render-phase reset — avoids set-state-in-effect cascading renders).
+  const [driverPage, setDriverPage] = useState(1);
+  const driverResetKey = `${driverSearch}|${driverFilter}`;
+  const [prevDriverKey, setPrevDriverKey] = useState(driverResetKey);
+  if (prevDriverKey !== driverResetKey) {
+    setPrevDriverKey(driverResetKey);
+    setDriverPage(1);
+  }
+  const driverPageCount = Math.max(1, Math.ceil(filteredDrivers.length / 10));
+  const currentDriverPage = Math.min(driverPage, driverPageCount);
+  const visibleDrivers = filteredDrivers.slice(
+    (currentDriverPage - 1) * 10,
+    currentDriverPage * 10,
+  );
+
   const vehicleActions: RowAction<Vehicle>[] = [
     { label: "View", onSelect: (r) => router.push(`/fleet/vehicles/${r.id}`) },
     { label: "Edit", onSelect: (r) => router.push(`/fleet/vehicles/${r.id}/edit`) },
@@ -133,6 +150,7 @@ export default function FleetPage() {
               rowKey={(r) => r.id}
               actions={vehicleActions}
               isLoading={isLoading}
+              pageSize={10}
               emptyMessage="No vehicles yet."
             />
           </Card>
@@ -189,20 +207,27 @@ export default function FleetPage() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredDrivers.map((d) => (
-                <DriverCard key={d.id} driver={d} onAssign={setAssignVehicleFor} />
-              ))}
-              <Link
-                href="/fleet/drivers/new"
-                className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground transition hover:border-primary hover:text-primary"
-              >
-                <span className="flex size-10 items-center justify-center rounded-full bg-secondary">
-                  <Plus className="size-5" />
-                </span>
-                <span className="text-sm font-semibold">Add New Driver</span>
-                <span className="text-xs">Register a driver and link them to a fleet vehicle</span>
-              </Link>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleDrivers.map((d) => (
+                  <DriverCard key={d.id} driver={d} onAssign={setAssignVehicleFor} />
+                ))}
+                <Link
+                  href="/fleet/drivers/new"
+                  className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground transition hover:border-primary hover:text-primary"
+                >
+                  <span className="flex size-10 items-center justify-center rounded-full bg-secondary">
+                    <Plus className="size-5" />
+                  </span>
+                  <span className="text-sm font-semibold">Add New Driver</span>
+                  <span className="text-xs">Register a driver and link them to a fleet vehicle</span>
+                </Link>
+              </div>
+              <TablePagination
+                page={currentDriverPage}
+                pageCount={driverPageCount}
+                onPageChange={setDriverPage}
+              />
             </div>
           )}
         </TabsContent>

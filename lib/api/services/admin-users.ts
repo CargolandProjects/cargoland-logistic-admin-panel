@@ -66,7 +66,7 @@ function mapLog(raw: Record<string, unknown>, i: number): AdminLog {
 export async function listAdmins(params: AdminListParams = {}): Promise<AdminListItem[]> {
   const qs = new URLSearchParams();
   qs.set("page", String(params.page ?? 1));
-  qs.set("limit", String(params.limit ?? 50));
+  qs.set("limit", String(params.limit ?? 100));
   const res = await apiList.get<Record<string, unknown>>(`/admin/all?${qs.toString()}`);
   return res.data.map(mapAdmin);
 }
@@ -82,7 +82,7 @@ export async function updateAdminStatus(body: UpdateAdminStatusInput): Promise<v
 export async function listAdminLogs(params: LogListParams = {}): Promise<AdminLog[]> {
   const qs = new URLSearchParams();
   qs.set("page", String(params.page ?? 1));
-  qs.set("limit", String(params.limit ?? 20));
+  qs.set("limit", String(params.limit ?? 100));
   if (params.action && params.action !== "all") qs.set("action", params.action);
   if (params.adminId) qs.set("adminId", params.adminId);
   const res = await apiList.get<Record<string, unknown>>(`/admin/logs?${qs.toString()}`);

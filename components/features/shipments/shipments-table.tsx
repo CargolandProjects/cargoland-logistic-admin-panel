@@ -51,6 +51,7 @@ export function ShipmentsTable({ data, isLoading }: { data: Shipment[]; isLoadin
       actions={actions}
       onRowClick={(r) => router.push(`/shipments/${r.id}`)}
       isLoading={isLoading}
+      pageSize={10}
       emptyMessage="No shipments match your filters."
     />
   );

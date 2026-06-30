@@ -5,6 +5,7 @@ import {
   Wallet,
   Tag,
   Users,
+  ShieldCheck,
   Bell,
   type LucideIcon,
 } from "lucide-react";
@@ -47,7 +48,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "System",
     items: [
-      { label: "Users", href: "/users", icon: Users, badge: 13 },
+      { label: "Users", href: "/users", icon: Users },
+      { label: "Admins", href: "/admins", icon: ShieldCheck },
       { label: "Notifications", href: "/notifications", icon: Bell, badge: 13 },
     ],
   },

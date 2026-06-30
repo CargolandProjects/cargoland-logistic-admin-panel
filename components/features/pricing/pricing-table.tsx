@@ -18,7 +18,7 @@ const columns: Column<Pricing>[] = [
   },
   {
     header: "Type",
-    cell: (r) => <StatusBadge status={PRICING_TYPE_LABELS[r.pricingShippingType]} tone="purple" />,
+    cell: (r) => <StatusBadge status={PRICING_TYPE_LABELS[r.shipmentType]} tone="purple" />,
   },
   { header: "Air", cell: (r) => r.airFreightRate },
   { header: "Road", cell: (r) => r.roadFreightRate },
@@ -42,6 +42,7 @@ export function PricingTable({ data, isLoading }: { data: Pricing[]; isLoading: 
       actions={actions}
       onRowClick={(r) => router.push(`/pricing/${r.id}`)}
       isLoading={isLoading}
+      pageSize={10}
       emptyMessage="No pricing rules yet."
     />
   );

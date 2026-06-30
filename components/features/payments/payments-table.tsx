@@ -38,6 +38,7 @@ export function PaymentsTable({
       data={data}
       rowKey={(r) => `${r.id}-${r.bookingRef}`}
       isLoading={isLoading}
+      pageSize={10}
       emptyMessage="No transactions found."
     />
   );
