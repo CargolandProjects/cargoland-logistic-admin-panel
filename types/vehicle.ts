@@ -28,6 +28,8 @@ export interface Vehicle {
   enableTelemetryAlert: boolean;
   setVehicleStatus: VehicleStatus;
   createdAt?: string;
+  /** Shipments assigned/onboard this vehicle (runtime field; docs call it assignedShipments). */
+  assignShipmentToVehicle?: AssignedShipment[];
 }
 
 /** POST/PUT /admin/vehicle body (VehicleDto). */

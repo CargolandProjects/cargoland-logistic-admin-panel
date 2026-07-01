@@ -25,26 +25,10 @@ import { FleetTrackingDialog } from "@/components/features/vehicles/fleet-tracki
 import { TablePagination } from "@/components/shared/table-pagination";
 import { DriverCard } from "@/components/features/drivers/driver-card";
 import { AssignVehicleToDriverDialog } from "@/components/features/drivers/assign-vehicle-to-driver-dialog";
-import { useVehicles } from "@/lib/query/hooks/use-vehicles";
+import { useVehicles, useVehicleAssignments } from "@/lib/query/hooks/use-vehicles";
 import { useDrivers } from "@/lib/query/hooks/use-drivers";
 import { VEHICLE_STATUS_LABELS, type Vehicle } from "@/types/vehicle";
 import type { Driver } from "@/types/driver";
-
-const vehicleColumns: Column<Vehicle>[] = [
-  {
-    header: "Vehicle ID",
-    cell: (r) => <span className="font-medium">{r.vehicleTrackingId || "—"}</span>,
-  },
-  { header: "Capacity", cell: (r) => r.maximumCapacity || "—" },
-  { header: "Packages", cell: (r) => r.maximumPackages || "—" },
-  { header: "Fuel", cell: (r) => r.fuelType || "—" },
-  { header: "Driver", cell: (r) => r.assignDriver || "—" },
-  { header: "Driver Plate No", cell: (r) => r.plateNumber || "—" },
-  {
-    header: "Status",
-    cell: (r) => <StatusBadge status={VEHICLE_STATUS_LABELS[r.setVehicleStatus]} />,
-  },
-];
 
 const ASSIGNMENT_OPTIONS = [
   { value: "all", label: "All Drivers" },
@@ -56,6 +40,7 @@ export default function FleetPage() {
   const router = useRouter();
   const { data: vehicles, isLoading } = useVehicles();
   const { data: drivers, isLoading: driversLoading } = useDrivers();
+  const { data: assignments } = useVehicleAssignments();
 
   const [assignDriverFor, setAssignDriverFor] = useState<Vehicle | null>(null);
   const [trackFor, setTrackFor] = useState<Vehicle | null>(null);
@@ -108,6 +93,52 @@ export default function FleetPage() {
     (currentDriverPage - 1) * 10,
     currentDriverPage * 10,
   );
+
+  // The vehicle's own `assignDriver` comes back empty, so resolve the driver name
+  // from the drivers list keyed by (1) the vehicle-assignment endpoint's driverId,
+  // then (2) the driver's own `assignToVehicle` (id / tracking id / plate).
+  const resolveDriver = useMemo(() => {
+    const list = drivers ?? [];
+    const byId = new Map<string, string>();
+    const byVehicleKey = new Map<string, string>();
+    list.forEach((d) => {
+      const name = `${d.firstName} ${d.lastname}`.trim();
+      if (!name) return;
+      if (d.id) byId.set(d.id, name);
+      if (d.assignToVehicle) byVehicleKey.set(d.assignToVehicle, name);
+    });
+    // vehicleId -> driver name, from the active driver↔vehicle assignments.
+    const byVehicleId = new Map<string, string>();
+    (assignments ?? []).forEach((a) => {
+      if (a.unassignedAt || !a.vehicleId) return;
+      const name = byId.get(a.driverId);
+      if (name) byVehicleId.set(a.vehicleId, name);
+    });
+    return (v: Vehicle) =>
+      byVehicleId.get(v.id) ||
+      byVehicleKey.get(v.id) ||
+      byVehicleKey.get(v.vehicleTrackingId) ||
+      byVehicleKey.get(v.plateNumber) ||
+      byId.get(v.assignDriver) ||
+      v.assignDriver ||
+      "—";
+  }, [drivers, assignments]);
+
+  const vehicleColumns: Column<Vehicle>[] = [
+    {
+      header: "Vehicle ID",
+      cell: (r) => <span className="font-medium">{r.vehicleTrackingId || "—"}</span>,
+    },
+    { header: "Capacity", cell: (r) => r.maximumCapacity || "—" },
+    { header: "Packages", cell: (r) => r.maximumPackages || "—" },
+    { header: "Fuel", cell: (r) => r.fuelType || "—" },
+    { header: "Driver", cell: (r) => resolveDriver(r) },
+    { header: "Driver Plate No", cell: (r) => r.plateNumber || "—" },
+    {
+      header: "Status",
+      cell: (r) => <StatusBadge status={VEHICLE_STATUS_LABELS[r.setVehicleStatus]} />,
+    },
+  ];
 
   const vehicleActions: RowAction<Vehicle>[] = [
     { label: "View", onSelect: (r) => router.push(`/fleet/vehicles/${r.id}`) },

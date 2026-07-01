@@ -11,6 +11,7 @@ import {
   assignDriverToVehicle,
   unassignDriverFromVehicle,
   getVehicleAssignment,
+  listVehicleAssignments,
   getVehicleTracking,
   fleetTracking,
   singleFleetTracking,
@@ -40,6 +41,14 @@ export function useVehicle(id: string) {
   });
 }
 
+/** Driver↔vehicle assignment records (used to resolve a vehicle's driver name). */
+export function useVehicleAssignments() {
+  return useQuery({
+    queryKey: qk.vehicles.assignments(),
+    queryFn: () => listVehicleAssignments(),
+  });
+}
+
 export function useVehicleTracking(trackingId: string | undefined) {
   return useQuery({
     queryKey: qk.vehicles.tracking(trackingId ?? ""),
@@ -66,10 +75,14 @@ export function useShipmentPlateMap(): Record<string, string> {
   });
   const map: Record<string, string> = {};
   trackable.forEach((v, i) => {
-    const tracking = results[i]?.data;
-    if (!tracking) return;
     const plate = v.plateNumber || v.vehicleTrackingId;
-    tracking.assignedShipments.forEach((sh) => {
+    // Primary source: the vehicle's own assigned-shipments (0 extra requests).
+    (v.assignShipmentToVehicle ?? []).forEach((sh) => {
+      const key = sh.trackingId || sh.id;
+      if (key) map[key] = plate;
+    });
+    // Fallback/merge: the per-vehicle tracking endpoint (whichever carries the data).
+    results[i]?.data?.assignedShipments.forEach((sh) => {
       const key = sh.trackingId || sh.id;
       if (key) map[key] = plate;
     });

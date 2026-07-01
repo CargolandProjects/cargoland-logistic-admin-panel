@@ -19,7 +19,14 @@ export interface VehicleListParams {
 }
 
 // Item field names from IVehicleDoc; passed through with light coercion.
-function mapVehicle(raw: Partial<Vehicle> & Record<string, unknown>, i: number): Vehicle {
+function mapVehicle(rawItem: Partial<Vehicle> & Record<string, unknown>, i: number): Vehicle {
+  // Some responses nest the vehicle under a `vehicle` key (e.g. tracking); merge so
+  // both flat and nested payloads resolve the same fields (top-level extras win).
+  const nested = rawItem.vehicle;
+  const raw = (nested && typeof nested === "object"
+    ? { ...(nested as Record<string, unknown>), ...rawItem }
+    : rawItem) as Partial<Vehicle> & Record<string, unknown>;
+  const assignments = raw.assignShipmentToVehicle;
   return {
     id: (raw.id as string) ?? (raw.vehicleTrackingId as string) ?? String(i),
     vehicleTrackingId: raw.vehicleTrackingId ?? "",
@@ -37,6 +44,9 @@ function mapVehicle(raw: Partial<Vehicle> & Record<string, unknown>, i: number):
     enableTelemetryAlert: Boolean(raw.enableTelemetryAlert),
     setVehicleStatus: (raw.setVehicleStatus as VehicleStatus) ?? "ACTIVE",
     createdAt: raw.createdAt,
+    assignShipmentToVehicle: Array.isArray(assignments)
+      ? assignments.map(mapAssignedShipment)
+      : [],
   };
 }
 
@@ -89,6 +99,25 @@ export async function getVehicleAssignment(): Promise<VehicleAssignment | null> 
     assignedAt: raw.assignedAt,
     unassignedAt: raw.unassignedAt ?? null,
   };
+}
+
+/**
+ * Driver↔vehicle assignment records. The endpoint is documented as a single
+ * object, but we tolerate an array too, so a name can be resolved for every
+ * assigned vehicle (each item is UUIDs only → resolve the driver name separately).
+ */
+export async function listVehicleAssignments(): Promise<VehicleAssignment[]> {
+  const raw = await api.get<unknown>("/admin/vehicle/vehicle-assignment");
+  const rows = Array.isArray(raw) ? raw : raw && typeof raw === "object" ? [raw] : [];
+  return rows
+    .filter((r): r is Record<string, unknown> => Boolean(r) && typeof r === "object")
+    .map((r) => ({
+      id: (r.id as string) ?? "",
+      driverId: (r.driverId as string) ?? "",
+      vehicleId: (r.vehicleId as string) ?? "",
+      assignedAt: r.assignedAt as string | undefined,
+      unassignedAt: (r.unassignedAt as string | null) ?? null,
+    }));
 }
 
 function str(v: unknown): string | undefined {

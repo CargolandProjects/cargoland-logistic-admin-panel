@@ -13,8 +13,12 @@ import { shipmentStatusLabel } from "@/types/shipment";
 import { DataTable, type Column, type RowAction } from "@/components/shared/data-table";
 import { AssignDriverDialog } from "@/components/features/vehicles/assign-driver-dialog";
 import { FleetTrackingDialog } from "@/components/features/vehicles/fleet-tracking-dialog";
-import { useVehicle, useVehicleTracking } from "@/lib/query/hooks/use-vehicles";
-import { useDriver } from "@/lib/query/hooks/use-drivers";
+import {
+  useVehicle,
+  useVehicleTracking,
+  useVehicleAssignments,
+} from "@/lib/query/hooks/use-vehicles";
+import { useDriver, useDrivers } from "@/lib/query/hooks/use-drivers";
 import { VEHICLE_STATUS_LABELS, type AssignedShipment } from "@/types/vehicle";
 
 export function VehicleStatusView({ id }: { id: string }) {
@@ -22,6 +26,8 @@ export function VehicleStatusView({ id }: { id: string }) {
   const trackingId = vehicle?.vehicleTrackingId;
   const { data: tracking } = useVehicleTracking(trackingId);
   const { data: driver } = useDriver(vehicle?.assignDriver ?? "");
+  const { data: drivers } = useDrivers();
+  const { data: assignments } = useVehicleAssignments();
 
   const [reassignOpen, setReassignOpen] = useState(false);
   const [trackAllOpen, setTrackAllOpen] = useState(false);
@@ -37,11 +43,34 @@ export function VehicleStatusView({ id }: { id: string }) {
     );
   }
 
+  // Driver: prefer the active driver↔vehicle assignment (authoritative link), else
+  // the vehicle's assignDriver (as an id), else a driver whose assignToVehicle points here.
+  const activeAssignment = (assignments ?? []).find(
+    (a) => !a.unassignedAt && a.vehicleId === vehicle.id,
+  );
+  const listDriver =
+    (activeAssignment && drivers?.find((d) => d.id === activeAssignment.driverId)) ||
+    drivers?.find(
+      (d) =>
+        d.assignToVehicle === vehicle.id ||
+        d.assignToVehicle === vehicle.vehicleTrackingId ||
+        d.assignToVehicle === vehicle.plateNumber ||
+        d.id === vehicle.assignDriver,
+    );
+  const nameFrom = (d: { firstName: string; lastname: string }) =>
+    `${d.firstName} ${d.lastname}`.trim();
   const driverName = driver
-    ? `${driver.firstName} ${driver.lastname}`.trim() + (driver.driverTrackingId ? ` (${driver.driverTrackingId})` : "")
-    : vehicle.assignDriver || "—";
+    ? nameFrom(driver) + (driver.driverTrackingId ? ` (${driver.driverTrackingId})` : "")
+    : listDriver
+      ? nameFrom(listDriver)
+      : vehicle.assignDriver || "—";
 
-  const packages = tracking?.assignedShipments ?? [];
+  // Onboard packages: prefer the tracking endpoint, fall back to the vehicle's own list.
+  const packages =
+    tracking?.assignedShipments?.length
+      ? tracking.assignedShipments
+      : vehicle.assignShipmentToVehicle ?? [];
+  const packageCount = packages.length || tracking?.totalPackages || 0;
 
   const columns: Column<AssignedShipment>[] = [
     { header: "Track ID", cell: (r) => <span className="font-medium text-brand-red">{r.trackingId}</span> },
@@ -104,7 +133,7 @@ export function VehicleStatusView({ id }: { id: string }) {
           </div>
           <div className="flex gap-8 text-center">
             <div>
-              <p className="text-2xl font-bold">{tracking?.totalPackages ?? 0}</p>
+              <p className="text-2xl font-bold">{packageCount}</p>
               <p className="text-xs uppercase tracking-wide text-white/70">Packages</p>
             </div>
             <div>
@@ -121,7 +150,7 @@ export function VehicleStatusView({ id }: { id: string }) {
           <div className="flex items-center gap-2">
             <Package className="size-5 text-indigo-600" />
             <h2 className="text-base font-semibold">
-              Packages Onboard — {tracking?.totalPackages ?? packages.length} total
+              Packages Onboard — {packageCount} total
             </h2>
           </div>
           <Button
