@@ -40,6 +40,8 @@ export interface Shipment {
   route: { from: string; to: string };
   lastUpdated: string;
   status: ShipmentStatus;
+  /** Assigned vehicle's plate, when the row carries it (usually derived from the fleet). */
+  plateNumber?: string;
 }
 
 /** A party on a shipment (sender or receiver). */

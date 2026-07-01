@@ -1,6 +1,6 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -49,11 +49,14 @@ export function AssignShipmentToVehicleDialog({
     defaultValues: { vehicleTrackingId: "" },
   });
 
-  const label = (trackingId: string) => {
+  const selectedTrackingId = useWatch({ control, name: "vehicleTrackingId" });
+  const selectedVehicle = vehicles?.find((v) => v.vehicleTrackingId === selectedTrackingId);
+
+  // Trigger label: show the selected vehicle's plate (fall back to its tracking id).
+  const triggerLabel = (trackingId: string) => {
     const v = vehicles?.find((x) => x.vehicleTrackingId === trackingId);
-    return v
-      ? `${v.vehicleTrackingId} · ${VEHICLE_STATUS_LABELS[v.setVehicleStatus]}`
-      : trackingId || "Select vehicle";
+    if (!v) return trackingId || "Select vehicle by plate";
+    return v.plateNumber || v.vehicleTrackingId;
   };
 
   const onSubmit = (values: FormValues) => {
@@ -85,19 +88,23 @@ export function AssignShipmentToVehicleDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Vehicle</Label>
+            <Label>Vehicle (by plate number)</Label>
             <Controller
               control={control}
               name="vehicleTrackingId"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={(v) => field.onChange(v as string)}>
                   <SelectTrigger className="h-10 w-full">
-                    <SelectValue>{(v) => label(v as string)}</SelectValue>
+                    <SelectValue>{(v) => triggerLabel(v as string)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {(vehicles ?? []).map((v) => (
                       <SelectItem key={v.id} value={v.vehicleTrackingId}>
-                        {v.vehicleTrackingId} · {VEHICLE_STATUS_LABELS[v.setVehicleStatus]}
+                        <span className="font-medium">{v.plateNumber || "No plate"}</span>
+                        <span className="text-muted-foreground">
+                          {" · "}
+                          {v.vehicleTrackingId} · {VEHICLE_STATUS_LABELS[v.setVehicleStatus]}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -111,6 +118,15 @@ export function AssignShipmentToVehicleDialog({
               <p className="text-xs text-muted-foreground">No vehicles available.</p>
             )}
           </div>
+
+          {selectedVehicle && (
+            <div className="rounded-lg bg-secondary/50 px-3 py-2">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Plate Number</p>
+              <p className="text-sm font-semibold text-foreground">
+                {selectedVehicle.plateNumber || "—"}
+              </p>
+            </div>
+          )}
           <DialogFooter>
             <Button type="submit" disabled={assign.isPending} className="bg-brand-red text-white">
               {assign.isPending ? "Assigning…" : "Assign"}

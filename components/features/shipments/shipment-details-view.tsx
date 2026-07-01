@@ -9,11 +9,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AssignShipmentToVehicleDialog } from "@/components/features/shipments/assign-shipment-to-vehicle-dialog";
-import { useShipmentRecord } from "@/lib/query/hooks/use-shipments";
+import { useShipment, useShipmentRecord } from "@/lib/query/hooks/use-shipments";
 import type { ShipmentParty } from "@/types/shipment";
 
 export function ShipmentDetailsView({ id }: { id: string }) {
   const { data: record, isLoading } = useShipmentRecord(id);
+  // Assigned vehicle (plate/id) is only available on the live-tracking payload.
+  const { data: detail } = useShipment(id);
   const [assignOpen, setAssignOpen] = useState(false);
 
   if (isLoading || !record) {
@@ -30,12 +32,17 @@ export function ShipmentDetailsView({ id }: { id: string }) {
     ? record.trackingId
     : `#${record.trackingId}`;
   const amount = formatNaira(Number(record.price) || 0);
+  const vehicleId = detail?.vehicleId;
+  const vehiclePlate = detail?.vehicle.plate;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">Shipment — {trackingLabel}</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          Shipment — {trackingLabel}
+          {vehicleId ? ` ↔ ${vehicleId}` : ""}
+        </h1>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
@@ -80,7 +87,8 @@ export function ShipmentDetailsView({ id }: { id: string }) {
             value={`${record.summaryFrom || "—"} → ${record.summaryTo || "—"}`}
           />
           <Field label="ID Number" value={record.idNumber || "—"} />
-          <div className="lg:col-span-2 lg:text-right">
+          <Field label="Vehicle Plate No" value={vehiclePlate || "—"} />
+          <div className="lg:text-right">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Invoice of Naira</p>
             <p className="mt-1 text-2xl font-bold text-brand-red">{amount}</p>
           </div>

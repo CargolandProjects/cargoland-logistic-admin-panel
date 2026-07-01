@@ -47,6 +47,9 @@ interface RawShipment {
   lastUpdated?: string;
   updatedAt?: string;
   status?: string;
+  plateNumber?: string;
+  vehiclePlate?: string;
+  plate?: string;
 }
 
 const VALID_STATUSES: ShipmentStatus[] = [
@@ -89,6 +92,7 @@ function mapShipment(raw: RawShipment, i: number): Shipment {
     },
     lastUpdated: raw.lastUpdated ?? raw.updatedAt ?? "",
     status: coerceStatus(raw.status),
+    plateNumber: raw.plateNumber ?? raw.vehiclePlate ?? raw.plate ?? undefined,
   };
 }
 

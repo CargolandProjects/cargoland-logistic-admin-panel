@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { qk } from "@/lib/query/keys";
@@ -46,6 +46,35 @@ export function useVehicleTracking(trackingId: string | undefined) {
     queryFn: () => getVehicleTracking(trackingId as string),
     enabled: Boolean(trackingId),
   });
+}
+
+/**
+ * Derived `shipmentTrackingId → vehicle plateNumber` map. The shipments list has no
+ * vehicle/plate field and no endpoint returns it directly, so we build it from the
+ * fleet: each vehicle's plate mapped to the shipments currently onboard it (via the
+ * per-vehicle tracking query, which is cached/shared with the fleet tracking modals).
+ */
+export function useShipmentPlateMap(): Record<string, string> {
+  const { data: vehicles } = useVehicles();
+  const trackable = (vehicles ?? []).filter((v) => v.vehicleTrackingId);
+  const results = useQueries({
+    queries: trackable.map((v) => ({
+      queryKey: qk.vehicles.tracking(v.vehicleTrackingId),
+      queryFn: () => getVehicleTracking(v.vehicleTrackingId),
+      staleTime: 60_000,
+    })),
+  });
+  const map: Record<string, string> = {};
+  trackable.forEach((v, i) => {
+    const tracking = results[i]?.data;
+    if (!tracking) return;
+    const plate = v.plateNumber || v.vehicleTrackingId;
+    tracking.assignedShipments.forEach((sh) => {
+      const key = sh.trackingId || sh.id;
+      if (key) map[key] = plate;
+    });
+  });
+  return map;
 }
 
 export function useCreateVehicle() {
