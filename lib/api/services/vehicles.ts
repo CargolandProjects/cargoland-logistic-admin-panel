@@ -33,6 +33,7 @@ function mapVehicle(raw: Partial<Vehicle> & Record<string, unknown>, i: number):
     assignDriver: raw.assignDriver ?? "",
     gpsDeviceId: raw.gpsDeviceId ?? "",
     telemanticProvider: raw.telemanticProvider ?? "",
+    plateNumber: raw.plateNumber ?? "",
     enableTelemetryAlert: Boolean(raw.enableTelemetryAlert),
     setVehicleStatus: (raw.setVehicleStatus as VehicleStatus) ?? "ACTIVE",
     createdAt: raw.createdAt,

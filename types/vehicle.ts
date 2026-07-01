@@ -24,6 +24,7 @@ export interface Vehicle {
   assignDriver: string;
   gpsDeviceId: string;
   telemanticProvider: string;
+  plateNumber: string;
   enableTelemetryAlert: boolean;
   setVehicleStatus: VehicleStatus;
   createdAt?: string;
@@ -40,6 +41,7 @@ export interface VehicleInput {
   hackneyPermitExpiry: string;
   gpsDeviceId: string;
   telemanticProvider: string;
+  plateNumber: string;
   enableTelemetryAlert: boolean;
   setVehicleStatus: VehicleStatus;
 }
@@ -48,6 +50,7 @@ export interface VehicleInput {
 export interface AssignVehicleInput {
   shipmentTrackingId: string;
   vehicleTrackingId: string;
+  plateNumber: string;
 }
 
 /** POST /admin/vehicle/assign-driver body (AssignDriverToVehicleDto). */

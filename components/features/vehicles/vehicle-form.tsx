@@ -38,6 +38,7 @@ const schema = z.object({
   hackneyPermitExpiry: z.string().min(1, "Required"),
   gpsDeviceId: z.string().min(1, "Required"),
   telemanticProvider: z.string().min(1, "Required"),
+  plateNumber: z.string().min(1, "Required"),
   enableTelemetryAlert: z.boolean(),
   setVehicleStatus: z.enum(["ACTIVE", "STANDY", "MAINTENANCE"]),
 });
@@ -67,6 +68,7 @@ export function VehicleForm({ initial }: { initial?: Vehicle }) {
       hackneyPermitExpiry: initial?.hackneyPermitExpiry ?? "",
       gpsDeviceId: initial?.gpsDeviceId ?? "",
       telemanticProvider: initial?.telemanticProvider ?? "",
+      plateNumber: initial?.plateNumber ?? "",
       enableTelemetryAlert: initial?.enableTelemetryAlert ?? false,
       setVehicleStatus: initial?.setVehicleStatus ?? "STANDY",
     },
@@ -97,6 +99,7 @@ export function VehicleForm({ initial }: { initial?: Vehicle }) {
           <Card className="gap-4 p-5">
             <SectionTitle>Vehicle Information</SectionTitle>
             {field("phoneNumber", "Phone Number *", { placeholder: "+234 ..." })}
+            {field("plateNumber", "Plate Number *", { placeholder: "e.g LND-441CG" })}
             <div className="grid gap-4 sm:grid-cols-2">
               {field("maximumCapacity", "Maximum Load Capacity (kg)", { placeholder: "e.g 1000" })}
               {field("maximumPackages", "Maximum Packages", { placeholder: "e.g 50" })}

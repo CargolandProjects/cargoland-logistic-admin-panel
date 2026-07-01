@@ -39,6 +39,7 @@ const vehicleColumns: Column<Vehicle>[] = [
   { header: "Packages", cell: (r) => r.maximumPackages || "—" },
   { header: "Fuel", cell: (r) => r.fuelType || "—" },
   { header: "Driver", cell: (r) => r.assignDriver || "—" },
+  { header: "Driver Plate No", cell: (r) => r.plateNumber || "—" },
   {
     header: "Status",
     cell: (r) => <StatusBadge status={VEHICLE_STATUS_LABELS[r.setVehicleStatus]} />,

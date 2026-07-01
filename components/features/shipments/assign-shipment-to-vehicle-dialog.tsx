@@ -58,8 +58,13 @@ export function AssignShipmentToVehicleDialog({
 
   const onSubmit = (values: FormValues) => {
     if (!shipmentTrackingId) return;
+    const vehicle = vehicles?.find((x) => x.vehicleTrackingId === values.vehicleTrackingId);
     assign.mutate(
-      { shipmentTrackingId, vehicleTrackingId: values.vehicleTrackingId },
+      {
+        shipmentTrackingId,
+        vehicleTrackingId: values.vehicleTrackingId,
+        plateNumber: vehicle?.plateNumber ?? "",
+      },
       {
         onSuccess: () => {
           reset();
