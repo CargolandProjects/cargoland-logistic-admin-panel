@@ -36,8 +36,9 @@ const schema = z.object({
   insurancePolicyNo: z.string().min(1, "Required"),
   roadWorthinessExpiry: z.string().min(1, "Required"),
   hackneyPermitExpiry: z.string().min(1, "Required"),
-  gpsDeviceId: z.string().min(1, "Required"),
-  telemanticProvider: z.string().min(1, "Required"),
+  // GPS & Tracking setup is optional — sent as empty strings when left blank.
+  gpsDeviceId: z.string(),
+  telemanticProvider: z.string(),
   plateNumber: z.string().min(1, "Required"),
   enableTelemetryAlert: z.boolean(),
   setVehicleStatus: z.enum(["ACTIVE", "STANDY", "MAINTENANCE"]),
