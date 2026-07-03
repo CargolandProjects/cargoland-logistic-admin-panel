@@ -14,8 +14,6 @@ export interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
-  /** Optional count badge shown on the right of the item. */
-  badge?: number;
 }
 
 export interface NavGroup {
@@ -34,15 +32,15 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Main",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
-      { label: "Shipments", href: "/shipments", icon: Truck, badge: 13 },
-      { label: "Fleet", href: "/fleet", icon: Warehouse, badge: 13 },
+      { label: "Shipments", href: "/shipments", icon: Truck },
+      { label: "Fleet", href: "/fleet", icon: Warehouse },
     ],
   },
   {
     title: "Finance",
     items: [
-      { label: "Payments", href: "/payments", icon: Wallet, badge: 13 },
-      { label: "Pricing", href: "/pricing", icon: Tag, badge: 13 },
+      { label: "Payments", href: "/payments", icon: Wallet },
+      { label: "Pricing", href: "/pricing", icon: Tag },
     ],
   },
   {
@@ -50,7 +48,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Users", href: "/users", icon: Users },
       { label: "Admins", href: "/admins", icon: ShieldCheck },
-      { label: "Notifications", href: "/notifications", icon: Bell, badge: 13 },
+      { label: "Notifications", href: "/notifications", icon: Bell },
     ],
   },
 ];

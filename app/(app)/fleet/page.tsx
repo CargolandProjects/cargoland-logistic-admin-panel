@@ -57,11 +57,29 @@ export default function FleetPage() {
     };
   }, [vehicles]);
 
+  // A driver's real assignment lives in the vehicle-assignment records (its own
+  // `assignToVehicle` is often left empty). Map driverId -> assigned vehicle label.
+  const driverVehicleLabel = useMemo(() => {
+    const vehById = new Map((vehicles ?? []).map((v) => [v.id, v]));
+    const map = new Map<string, string>();
+    (assignments ?? []).forEach((a) => {
+      if (a.unassignedAt || !a.driverId) return;
+      const veh = vehById.get(a.vehicleId);
+      const label = veh ? veh.plateNumber || veh.vehicleTrackingId || veh.id : a.vehicleId;
+      if (label) map.set(a.driverId, label);
+    });
+    return map;
+  }, [assignments, vehicles]);
+
+  const assignedVehicleOf = (d: Driver) => driverVehicleLabel.get(d.id) || d.assignToVehicle || "";
+
   const driverStats = useMemo(() => {
     const list = drivers ?? [];
-    const assigned = list.filter((d) => d.assignToVehicle).length;
+    const assigned = list.filter(
+      (d) => driverVehicleLabel.get(d.id) || d.assignToVehicle,
+    ).length;
     return { total: list.length, assigned, unassigned: list.length - assigned };
-  }, [drivers]);
+  }, [drivers, driverVehicleLabel]);
 
   const filteredDrivers = useMemo(() => {
     let list = drivers ?? [];
@@ -73,10 +91,11 @@ export default function FleetPage() {
           d.driverTrackingId.toLowerCase().includes(q),
       );
     }
-    if (driverFilter === "assigned") list = list.filter((d) => d.assignToVehicle);
-    if (driverFilter === "unassigned") list = list.filter((d) => !d.assignToVehicle);
+    const isAssigned = (d: Driver) => Boolean(driverVehicleLabel.get(d.id) || d.assignToVehicle);
+    if (driverFilter === "assigned") list = list.filter(isAssigned);
+    if (driverFilter === "unassigned") list = list.filter((d) => !isAssigned(d));
     return list;
-  }, [drivers, driverSearch, driverFilter]);
+  }, [drivers, driverSearch, driverFilter, driverVehicleLabel]);
 
   // Paginate the driver card grid (10 per page); reset when the filter changes
   // (render-phase reset — avoids set-state-in-effect cascading renders).
@@ -242,7 +261,12 @@ export default function FleetPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleDrivers.map((d) => (
-                  <DriverCard key={d.id} driver={d} onAssign={setAssignVehicleFor} />
+                  <DriverCard
+                    key={d.id}
+                    driver={d}
+                    assignedVehicle={assignedVehicleOf(d)}
+                    onAssign={setAssignVehicleFor}
+                  />
                 ))}
                 <Link
                   href="/fleet/drivers/new"

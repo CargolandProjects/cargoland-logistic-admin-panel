@@ -39,12 +39,17 @@ function isAuthEndpoint(url?: string): boolean {
   return Boolean(url && (url.includes("/auth/") || url.includes("/admin/login")));
 }
 
+let redirectingToLogin = false;
+
 function handleAuthFailure(): void {
+  // Token missing/expired/invalid → drop it and bounce to login.
   tokenStore.clear();
-  if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-    const next = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.assign(`/login?next=${next}`);
-  }
+  if (typeof window === "undefined") return;
+  if (redirectingToLogin || window.location.pathname.startsWith("/login")) return;
+  // Single-flight: concurrent 401s shouldn't queue multiple redirects.
+  redirectingToLogin = true;
+  const next = encodeURIComponent(window.location.pathname + window.location.search);
+  window.location.assign(`/login?reason=expired&next=${next}`);
 }
 
 apiClient.interceptors.response.use(

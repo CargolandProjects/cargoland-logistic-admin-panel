@@ -1,21 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Package, ChevronLeft } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { Package, ChevronLeft, LogOut } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { NAV_GROUPS } from "@/lib/nav";
 import { useUIStore } from "@/stores/ui-store";
 import { useProfile } from "@/lib/query/hooks/use-profile";
+import { useNavCounts } from "@/lib/query/hooks/use-nav-counts";
+import { logout } from "@/lib/api/services/auth";
 import { ROLE_LABELS } from "@/types/auth";
 import { UserBadge } from "@/components/layout/user-badge";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggle = useUIStore((s) => s.toggleSidebar);
   const { data: profile } = useProfile();
+  const counts = useNavCounts();
+
+  const onLogout = async () => {
+    await logout(); // clears the auth token
+    queryClient.clear(); // drop cached profile/lists so the next login starts clean
+    router.replace("/login");
+  };
 
   return (
     <aside
@@ -60,6 +72,7 @@ export function Sidebar() {
                 const active =
                   pathname === item.href || pathname.startsWith(item.href + "/");
                 const Icon = item.icon;
+                const count = counts[item.href];
                 return (
                   <li key={item.href}>
                     <Link
@@ -75,14 +88,14 @@ export function Sidebar() {
                     >
                       <Icon className="size-5 shrink-0" />
                       {!collapsed && <span className="flex-1">{item.label}</span>}
-                      {!collapsed && item.badge != null && (
+                      {!collapsed && count > 0 && (
                         <span
                           className={cn(
                             "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                             active ? "bg-white/25 text-white" : "bg-white/10 text-white/70",
                           )}
                         >
-                          {item.badge}
+                          {count}
                         </span>
                       )}
                     </Link>
@@ -94,13 +107,25 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Persona */}
-      <div className="p-3">
+      {/* Persona + logout */}
+      <div className="space-y-2 p-3">
         <UserBadge
           name={profile?.name || "Admin"}
           role={profile ? (ROLE_LABELS[profile.role] ?? profile.role) : "—"}
           collapsed={collapsed}
         />
+        <button
+          type="button"
+          onClick={onLogout}
+          title={collapsed ? "Log out" : undefined}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white",
+            collapsed && "justify-center px-0",
+          )}
+        >
+          <LogOut className="size-5 shrink-0" />
+          {!collapsed && <span>Log out</span>}
+        </button>
       </div>
     </aside>
   );

@@ -13,12 +13,16 @@ function initials(driver: Driver) {
 
 export function DriverCard({
   driver,
+  assignedVehicle,
   onAssign,
 }: {
   driver: Driver;
+  /** Assigned vehicle label resolved from the vehicle-assignment records ("" if none). */
+  assignedVehicle?: string;
   onAssign: (driver: Driver) => void;
 }) {
-  const assigned = Boolean(driver.assignToVehicle);
+  const vehicleLabel = assignedVehicle || driver.assignToVehicle || "";
+  const assigned = Boolean(vehicleLabel);
   const name = `${driver.firstName} ${driver.lastname}`.trim() || "—";
 
   return (
@@ -36,7 +40,7 @@ export function DriverCard({
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-3 text-xs">
-        <Cell label="Vehicle" value={driver.assignToVehicle || "—"} />
+        <Cell label="Vehicle" value={vehicleLabel || "—"} />
         <Cell label="Experience" value={driver.yearOfExperience || "—"} />
         <Cell label="Gender" value={driver.gender || "—"} />
         <Cell label="License No." value={driver.driverLicenseNo || "—"} />

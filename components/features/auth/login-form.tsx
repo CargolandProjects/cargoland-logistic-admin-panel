@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +26,13 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+
+  // Explain the bounce when the session expired (a stable id de-dupes it).
+  useEffect(() => {
+    if (searchParams.get("reason") === "expired") {
+      toast.info("Your session expired. Please sign in again.", { id: "session-expired" });
+    }
+  }, [searchParams]);
 
   const {
     register,
