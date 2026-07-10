@@ -25,7 +25,8 @@ import { FleetTrackingDialog } from "@/components/features/vehicles/fleet-tracki
 import { TablePagination } from "@/components/shared/table-pagination";
 import { DriverCard } from "@/components/features/drivers/driver-card";
 import { AssignVehicleToDriverDialog } from "@/components/features/drivers/assign-vehicle-to-driver-dialog";
-import { useVehicles, useVehicleAssignments } from "@/lib/query/hooks/use-vehicles";
+import { UnassignDriverDialog } from "@/components/features/drivers/unassign-driver-dialog";
+import { useVehicles, useAssignmentIndex } from "@/lib/query/hooks/use-vehicles";
 import { useDrivers } from "@/lib/query/hooks/use-drivers";
 import { VEHICLE_STATUS_LABELS, type Vehicle } from "@/types/vehicle";
 import type { Driver } from "@/types/driver";
@@ -40,11 +41,17 @@ export default function FleetPage() {
   const router = useRouter();
   const { data: vehicles, isLoading } = useVehicles();
   const { data: drivers, isLoading: driversLoading } = useDrivers();
-  const { data: assignments } = useVehicleAssignments();
+  const { driverAssignment, vehicleDriverName } = useAssignmentIndex();
 
   const [assignDriverFor, setAssignDriverFor] = useState<Vehicle | null>(null);
   const [trackFor, setTrackFor] = useState<Vehicle | null>(null);
   const [assignVehicleFor, setAssignVehicleFor] = useState<Driver | null>(null);
+  const [unassignTarget, setUnassignTarget] = useState<{
+    driverName?: string;
+    vehicleLabel?: string;
+    assignmentId?: string;
+    vehicleId?: string;
+  } | null>(null);
   const [driverSearch, setDriverSearch] = useState("");
   const [driverFilter, setDriverFilter] = useState("all");
 
@@ -57,29 +64,15 @@ export default function FleetPage() {
     };
   }, [vehicles]);
 
-  // A driver's real assignment lives in the vehicle-assignment records (its own
-  // `assignToVehicle` is often left empty). Map driverId -> assigned vehicle label.
-  const driverVehicleLabel = useMemo(() => {
-    const vehById = new Map((vehicles ?? []).map((v) => [v.id, v]));
-    const map = new Map<string, string>();
-    (assignments ?? []).forEach((a) => {
-      if (a.unassignedAt || !a.driverId) return;
-      const veh = vehById.get(a.vehicleId);
-      const label = veh ? veh.plateNumber || veh.vehicleTrackingId || veh.id : a.vehicleId;
-      if (label) map.set(a.driverId, label);
-    });
-    return map;
-  }, [assignments, vehicles]);
-
-  const assignedVehicleOf = (d: Driver) => driverVehicleLabel.get(d.id) || d.assignToVehicle || "";
+  // A driver's assignment state is resolved once, centrally, from all signals
+  // (assignment records + vehicle.assignDriver + driver.assignToVehicle).
+  const assignedVehicleOf = (d: Driver) => driverAssignment.get(d.id)?.label ?? "";
 
   const driverStats = useMemo(() => {
     const list = drivers ?? [];
-    const assigned = list.filter(
-      (d) => driverVehicleLabel.get(d.id) || d.assignToVehicle,
-    ).length;
+    const assigned = list.filter((d) => driverAssignment.has(d.id)).length;
     return { total: list.length, assigned, unassigned: list.length - assigned };
-  }, [drivers, driverVehicleLabel]);
+  }, [drivers, driverAssignment]);
 
   const filteredDrivers = useMemo(() => {
     let list = drivers ?? [];
@@ -91,11 +84,20 @@ export default function FleetPage() {
           d.driverTrackingId.toLowerCase().includes(q),
       );
     }
-    const isAssigned = (d: Driver) => Boolean(driverVehicleLabel.get(d.id) || d.assignToVehicle);
-    if (driverFilter === "assigned") list = list.filter(isAssigned);
-    if (driverFilter === "unassigned") list = list.filter((d) => !isAssigned(d));
+    if (driverFilter === "assigned") list = list.filter((d) => driverAssignment.has(d.id));
+    if (driverFilter === "unassigned") list = list.filter((d) => !driverAssignment.has(d.id));
     return list;
-  }, [drivers, driverSearch, driverFilter, driverVehicleLabel]);
+  }, [drivers, driverSearch, driverFilter, driverAssignment]);
+
+  const onUnassignDriver = (d: Driver) => {
+    const info = driverAssignment.get(d.id);
+    setUnassignTarget({
+      driverName: `${d.firstName} ${d.lastname}`.trim() || d.driverTrackingId,
+      vehicleLabel: info?.label,
+      assignmentId: info?.assignmentId,
+      vehicleId: info?.vehicleId,
+    });
+  };
 
   // Paginate the driver card grid (10 per page); reset when the filter changes
   // (render-phase reset — avoids set-state-in-effect cascading renders).
@@ -113,35 +115,9 @@ export default function FleetPage() {
     currentDriverPage * 10,
   );
 
-  // The vehicle's own `assignDriver` comes back empty, so resolve the driver name
-  // from the drivers list keyed by (1) the vehicle-assignment endpoint's driverId,
-  // then (2) the driver's own `assignToVehicle` (id / tracking id / plate).
-  const resolveDriver = useMemo(() => {
-    const list = drivers ?? [];
-    const byId = new Map<string, string>();
-    const byVehicleKey = new Map<string, string>();
-    list.forEach((d) => {
-      const name = `${d.firstName} ${d.lastname}`.trim();
-      if (!name) return;
-      if (d.id) byId.set(d.id, name);
-      if (d.assignToVehicle) byVehicleKey.set(d.assignToVehicle, name);
-    });
-    // vehicleId -> driver name, from the active driver↔vehicle assignments.
-    const byVehicleId = new Map<string, string>();
-    (assignments ?? []).forEach((a) => {
-      if (a.unassignedAt || !a.vehicleId) return;
-      const name = byId.get(a.driverId);
-      if (name) byVehicleId.set(a.vehicleId, name);
-    });
-    return (v: Vehicle) =>
-      byVehicleId.get(v.id) ||
-      byVehicleKey.get(v.id) ||
-      byVehicleKey.get(v.vehicleTrackingId) ||
-      byVehicleKey.get(v.plateNumber) ||
-      byId.get(v.assignDriver) ||
-      v.assignDriver ||
-      "—";
-  }, [drivers, assignments]);
+  // Vehicle → driver name from the shared assignment index (same source as the
+  // Drivers tab, so both screens agree). Fall back to the raw id, then em dash.
+  const resolveDriver = (v: Vehicle) => vehicleDriverName.get(v.id) || v.assignDriver || "—";
 
   const vehicleColumns: Column<Vehicle>[] = [
     {
@@ -163,6 +139,16 @@ export default function FleetPage() {
     { label: "View", onSelect: (r) => router.push(`/fleet/vehicles/${r.id}`) },
     { label: "Edit", onSelect: (r) => router.push(`/fleet/vehicles/${r.id}/edit`) },
     { label: "Assign", onSelect: (r) => setAssignDriverFor(r) },
+    {
+      label: "Unassign",
+      destructive: true,
+      onSelect: (r) =>
+        setUnassignTarget({
+          driverName: vehicleDriverName.get(r.id),
+          vehicleLabel: r.plateNumber || r.vehicleTrackingId || r.id,
+          vehicleId: r.id,
+        }),
+    },
     { label: "Track", onSelect: (r) => setTrackFor(r) },
   ];
 
@@ -266,6 +252,7 @@ export default function FleetPage() {
                     driver={d}
                     assignedVehicle={assignedVehicleOf(d)}
                     onAssign={setAssignVehicleFor}
+                    onUnassign={onUnassignDriver}
                   />
                 ))}
                 <Link
@@ -310,6 +297,17 @@ export default function FleetPage() {
         open={Boolean(assignVehicleFor)}
         onOpenChange={(o) => !o && setAssignVehicleFor(null)}
         driverId={assignVehicleFor?.id}
+      />
+
+      {/* Release a driver↔vehicle assignment (from a driver card or a vehicle row) */}
+      <UnassignDriverDialog
+        key={`unassign-${unassignTarget?.assignmentId ?? unassignTarget?.vehicleId}`}
+        open={Boolean(unassignTarget)}
+        onOpenChange={(o) => !o && setUnassignTarget(null)}
+        driverName={unassignTarget?.driverName}
+        vehicleLabel={unassignTarget?.vehicleLabel}
+        assignmentId={unassignTarget?.assignmentId}
+        vehicleId={unassignTarget?.vehicleId}
       />
     </div>
   );

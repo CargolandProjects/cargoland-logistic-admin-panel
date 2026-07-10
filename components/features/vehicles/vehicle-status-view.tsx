@@ -12,11 +12,13 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { shipmentStatusLabel } from "@/types/shipment";
 import { DataTable, type Column, type RowAction } from "@/components/shared/data-table";
 import { AssignDriverDialog } from "@/components/features/vehicles/assign-driver-dialog";
+import { UnassignDriverDialog } from "@/components/features/drivers/unassign-driver-dialog";
 import { FleetTrackingDialog } from "@/components/features/vehicles/fleet-tracking-dialog";
 import {
   useVehicle,
   useVehicleTracking,
   useVehicleAssignments,
+  useAssignmentIndex,
 } from "@/lib/query/hooks/use-vehicles";
 import { useDriver, useDrivers } from "@/lib/query/hooks/use-drivers";
 import { VEHICLE_STATUS_LABELS, type AssignedShipment } from "@/types/vehicle";
@@ -28,8 +30,10 @@ export function VehicleStatusView({ id }: { id: string }) {
   const { data: driver } = useDriver(vehicle?.assignDriver ?? "");
   const { data: drivers } = useDrivers();
   const { data: assignments } = useVehicleAssignments();
+  const { vehicleDriverName } = useAssignmentIndex();
 
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [unassignOpen, setUnassignOpen] = useState(false);
   const [trackAllOpen, setTrackAllOpen] = useState(false);
   const [trackSingle, setTrackSingle] = useState<string | null>(null);
 
@@ -59,11 +63,12 @@ export function VehicleStatusView({ id }: { id: string }) {
     );
   const nameFrom = (d: { firstName: string; lastname: string }) =>
     `${d.firstName} ${d.lastname}`.trim();
+  // Shared index name keeps this screen consistent with the Drivers tab.
+  const indexName = vehicleDriverName.get(vehicle.id);
   const driverName = driver
     ? nameFrom(driver) + (driver.driverTrackingId ? ` (${driver.driverTrackingId})` : "")
-    : listDriver
-      ? nameFrom(listDriver)
-      : vehicle.assignDriver || "—";
+    : indexName || (listDriver ? nameFrom(listDriver) : vehicle.assignDriver || "—");
+  const hasDriver = Boolean(driver || indexName || listDriver || vehicle.assignDriver);
 
   // Onboard packages: prefer the tracking endpoint, fall back to the vehicle's own list.
   const packages =
@@ -103,6 +108,16 @@ export function VehicleStatusView({ id }: { id: string }) {
           <Button variant="outline" size="sm" onClick={() => setReassignOpen(true)}>
             Reassign
           </Button>
+          {hasDriver && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-brand-red text-brand-red"
+              onClick={() => setUnassignOpen(true)}
+            >
+              Unassign
+            </Button>
+          )}
           <Button
             size="sm"
             className="bg-brand-red text-white"
@@ -177,6 +192,15 @@ export function VehicleStatusView({ id }: { id: string }) {
         onOpenChange={setReassignOpen}
         vehicleId={vehicle.id}
         vehicleLabel={vehicle.vehicleTrackingId}
+      />
+      {/* Unassign driver */}
+      <UnassignDriverDialog
+        open={unassignOpen}
+        onOpenChange={setUnassignOpen}
+        driverName={hasDriver ? driverName : undefined}
+        vehicleLabel={vehicle.vehicleTrackingId || vehicle.plateNumber}
+        assignmentId={activeAssignment?.id}
+        vehicleId={vehicle.id}
       />
       {/* Track whole vehicle */}
       <FleetTrackingDialog
