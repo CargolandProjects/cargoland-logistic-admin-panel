@@ -1,7 +1,10 @@
+import { useMemo } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { qk } from "@/lib/query/keys";
+import { useDrivers } from "@/lib/query/hooks/use-drivers";
+import type { Driver } from "@/types/driver";
 import {
   listVehicles,
   getVehicle,
@@ -47,6 +50,90 @@ export function useVehicleAssignments() {
     queryKey: qk.vehicles.assignments(),
     queryFn: () => listVehicleAssignments(),
   });
+}
+
+export interface DriverAssignmentInfo {
+  /** Human-readable vehicle label (plate / tracking id / id). */
+  label: string;
+  vehicleId: string;
+  /** Assignment record id, when known — lets unassign target it directly. */
+  assignmentId?: string;
+}
+
+export interface AssignmentIndex {
+  /** driverId → assigned vehicle info. Absence means the driver is unassigned. */
+  driverAssignment: Map<string, DriverAssignmentInfo>;
+  /** vehicleId → assigned driver name. */
+  vehicleDriverName: Map<string, string>;
+}
+
+/**
+ * Shared driver↔vehicle assignment index so the Fleet page and the vehicle status
+ * view derive assignment state from the same signals. Combined in priority order:
+ * (1) active assignment records — also captures the assignment id so unassign is
+ * reliable; (2) each vehicle's own `assignDriver` — per-vehicle linkage for the whole
+ * fleet even when the assignment endpoint returns a single record; (3) the driver's
+ * own `assignToVehicle` fallback (often empty). The three queries are shared/deduped.
+ */
+export function useAssignmentIndex(): AssignmentIndex {
+  const { data: vehicles } = useVehicles();
+  const { data: drivers } = useDrivers();
+  const { data: assignments } = useVehicleAssignments();
+
+  return useMemo(() => {
+    const vehById = new Map((vehicles ?? []).map((v) => [v.id, v]));
+    const driverById = new Map((drivers ?? []).map((d) => [d.id, d]));
+    const nameOf = (d: Driver) => `${d.firstName} ${d.lastname}`.trim();
+    const labelFor = (vehicleId: string) => {
+      const v = vehById.get(vehicleId);
+      return v ? v.plateNumber || v.vehicleTrackingId || v.id : vehicleId;
+    };
+
+    const driverAssignment = new Map<string, DriverAssignmentInfo>();
+    const vehicleDriverName = new Map<string, string>();
+
+    // (1) active assignment records — authoritative link + assignment id.
+    (assignments ?? []).forEach((a) => {
+      if (a.unassignedAt || !a.driverId || !a.vehicleId) return;
+      driverAssignment.set(a.driverId, {
+        label: labelFor(a.vehicleId),
+        vehicleId: a.vehicleId,
+        assignmentId: a.id || undefined,
+      });
+      const d = driverById.get(a.driverId);
+      if (d) vehicleDriverName.set(a.vehicleId, nameOf(d));
+    });
+
+    // (2) vehicle.assignDriver — per-vehicle linkage across the fleet.
+    (vehicles ?? []).forEach((v) => {
+      const driverId = v.assignDriver;
+      if (!driverId) return;
+      if (!driverAssignment.has(driverId)) {
+        driverAssignment.set(driverId, { label: labelFor(v.id), vehicleId: v.id });
+      }
+      const d = driverById.get(driverId);
+      if (d && !vehicleDriverName.has(v.id)) vehicleDriverName.set(v.id, nameOf(d));
+    });
+
+    // (3) driver.assignToVehicle — last-resort fallback (id / tracking id / plate).
+    (drivers ?? []).forEach((d) => {
+      if (driverAssignment.has(d.id) || !d.assignToVehicle) return;
+      const v =
+        vehById.get(d.assignToVehicle) ??
+        (vehicles ?? []).find(
+          (x) =>
+            x.vehicleTrackingId === d.assignToVehicle || x.plateNumber === d.assignToVehicle,
+        );
+      driverAssignment.set(d.id, {
+        label: v ? v.plateNumber || v.vehicleTrackingId || v.id : d.assignToVehicle,
+        vehicleId: v?.id ?? "",
+      });
+      const name = nameOf(d);
+      if (v && name && !vehicleDriverName.has(v.id)) vehicleDriverName.set(v.id, name);
+    });
+
+    return { driverAssignment, vehicleDriverName };
+  }, [vehicles, drivers, assignments]);
 }
 
 export function useVehicleTracking(trackingId: string | undefined) {
@@ -169,8 +256,20 @@ export function useAssignDriver() {
 export function useUnassignDriver() {
   const qc = useQueryClient();
   return useMutation({
-    // Resolve the current assignment for this vehicle, then unassign by its id.
-    mutationFn: async (vehicleId: string) => {
+    // Prefer a known assignment id (reliable when the caller already loaded the
+    // assignment records). Otherwise resolve the current assignment for the vehicle
+    // via the single-record endpoint and unassign by its id.
+    mutationFn: async ({
+      assignmentId,
+      vehicleId,
+    }: {
+      assignmentId?: string;
+      vehicleId?: string;
+    }) => {
+      if (assignmentId) {
+        await unassignDriverFromVehicle({ assignmentId });
+        return;
+      }
       const assignment = await getVehicleAssignment();
       if (!assignment?.id || assignment.vehicleId !== vehicleId || assignment.unassignedAt) {
         throw new Error("NO_ACTIVE_ASSIGNMENT");

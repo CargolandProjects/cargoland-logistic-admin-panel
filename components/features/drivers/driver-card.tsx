@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { UserMinus } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,11 +16,14 @@ export function DriverCard({
   driver,
   assignedVehicle,
   onAssign,
+  onUnassign,
 }: {
   driver: Driver;
   /** Assigned vehicle label resolved from the vehicle-assignment records ("" if none). */
   assignedVehicle?: string;
   onAssign: (driver: Driver) => void;
+  /** Release the driver's current vehicle. Shown only when assigned. */
+  onUnassign?: (driver: Driver) => void;
 }) {
   const vehicleLabel = assignedVehicle || driver.assignToVehicle || "";
   const assigned = Boolean(vehicleLabel);
@@ -46,23 +50,35 @@ export function DriverCard({
         <Cell label="License No." value={driver.driverLicenseNo || "—"} />
       </div>
 
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1"
-          nativeButton={false}
-          render={<Link href={`/fleet/drivers/${driver.id}`} />}
-        >
-          View Profile
-        </Button>
-        <Button
-          size="sm"
-          className="flex-1 bg-brand-red text-white"
-          onClick={() => onAssign(driver)}
-        >
-          {assigned ? "Reassign" : "Assign Now"}
-        </Button>
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            nativeButton={false}
+            render={<Link href={`/fleet/drivers/${driver.id}`} />}
+          >
+            View Profile
+          </Button>
+          <Button
+            size="sm"
+            className="flex-1 bg-brand-red text-white"
+            onClick={() => onAssign(driver)}
+          >
+            {assigned ? "Reassign" : "Assign Now"}
+          </Button>
+        </div>
+        {assigned && onUnassign && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-brand-red text-brand-red"
+            onClick={() => onUnassign(driver)}
+          >
+            <UserMinus className="size-4" /> Unassign
+          </Button>
+        )}
       </div>
     </Card>
   );
