@@ -100,6 +100,12 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
   const locationOptions = isDomestic ? STATES_BY_COUNTRY[country] ?? [] : COUNTRIES;
 
   const onTypeChange = (val: PricingShipmentType) => {
+    // Domestic is a distinct backend resource with its own form. In create mode,
+    // switching to Domestic routes there; existing rows can't change type.
+    if (val === "DOMESTIC" && !initial) {
+      router.push("/pricing/new?type=domestic");
+      return;
+    }
     setValue("shipmentType", val);
     // Reset locations so we don't submit a country where a state is expected.
     setValue("fromWhere", "");
@@ -138,9 +144,15 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
             control={control}
             name="shipmentType"
             render={({ field }) => (
-              <Select value={field.value} onValueChange={(v) => onTypeChange(v as PricingShipmentType)}>
+              <Select
+                value={field.value}
+                onValueChange={(v) => onTypeChange(v as PricingShipmentType)}
+                disabled={Boolean(initial)}
+              >
                 <SelectTrigger className="h-9 w-auto rounded-md bg-indigo-50 font-medium text-indigo-700">
-                  <SelectValue>{(v) => PRICING_TYPE_LABELS[v as PricingShipmentType]}</SelectValue>
+                  <SelectValue>
+                    {(v) => `${PRICING_TYPE_LABELS[v as PricingShipmentType]} Shipping`}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {PRICING_TYPE_OPTIONS.map((o) => (
