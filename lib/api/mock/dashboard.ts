@@ -1,4 +1,4 @@
-import type { DashboardSummary } from "@/types/dashboard";
+import type { DashboardAnalytics, DashboardSummary } from "@/types/dashboard";
 
 export const MOCK_DASHBOARD: DashboardSummary = {
   stats: [
@@ -21,4 +21,24 @@ export const MOCK_DASHBOARD: DashboardSummary = {
     { id: "a3", kind: "shipment", title: "Shipment #SH-0034 marked In Transit", meta: "18 minutes ago · ₦450,000" },
     { id: "a4", kind: "quote", title: "Quote requested on #BK-0090", meta: "2 hours ago · Fatima Yusuf" },
   ],
+};
+
+/** Demo analytics used when both shipments + payments are mocked. */
+export const MOCK_DASHBOARD_ANALYTICS: DashboardAnalytics = {
+  statusCounts: [
+    { status: "PENDING", label: "Pending", value: 42, color: "#f59e0b" },
+    { status: "ASSIGNED", label: "Assigned", value: 18, color: "#2563eb" },
+    { status: "PICKED_UP", label: "Picked Up", value: 9, color: "#0891b2" },
+    { status: "AT_ORIGIN_HUB", label: "At Origin Hub", value: 6, color: "#d97706" },
+    { status: "IN_TRANSIT", label: "In Transit", value: 63, color: "#4338ca" },
+    { status: "CUSTOM_CLEARANCE", label: "Customs Clearance", value: 4, color: "#6a2bb0" },
+    { status: "DESTINATION", label: "At Destination", value: 11, color: "#0d9488" },
+    { status: "DELIVERED", label: "Delivered", value: 128, color: "#16a34a" },
+    { status: "CANCELLED", label: "Cancelled", value: 7, color: "#e5392f" },
+  ],
+  typeCounts: [
+    { type: "Local", value: 214, color: "#4338ca" },
+    { type: "International", value: 84, color: "#f59e0b" },
+  ],
+  payments: { totalCollected: 8420000, pending: 1240000, failed: 110000 },
 };
