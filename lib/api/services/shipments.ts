@@ -133,6 +133,7 @@ export async function getShipmentsPage(
   params.set("skip", String(filters.skip ?? 0));
   params.set("take", String(filters.take ?? 10));
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  if (filters.type && filters.type !== "all") params.set("type", filters.type);
   const res = await apiList.get<RawShipment>(`/admin/shipments?${params.toString()}`);
   return { data: res.data.map(mapShipment), total: res.meta?.total ?? res.data.length };
 }
@@ -247,15 +248,22 @@ function mapShipmentDetail(raw: Record<string, unknown>, id: string): ShipmentDe
       plate: pick(vehicle.plate, raw.vehiclePlate),
     },
     progress: num(raw.progress ?? raw.completionRate),
-    vehicleStatus: {
-      headline: pick(
-        vehicleStatus.headline,
-        raw.vehicleOperatingNormally ? "Vehicle operating normally" : "",
-      ),
-      subtext: pick(vehicleStatus.subtext),
-      location: pick(vehicleStatus.location, raw.location),
-      speed: pick(vehicleStatus.speed, raw.speed != null ? `${str(raw.speed)} km/h` : ""),
-    },
+    vehicleStatus: (() => {
+      // Operating-normally: honor an explicit false; default true when absent so
+      // missing data doesn't raise a false alarm.
+      const opNormal = vehicleStatus.normal ?? raw.vehicleOperatingNormally;
+      const normal = opNormal !== false;
+      return {
+        headline: pick(
+          vehicleStatus.headline,
+          normal ? "Vehicle operating normally" : "Vehicle needs attention",
+        ),
+        subtext: pick(vehicleStatus.subtext),
+        location: pick(vehicleStatus.location, raw.location),
+        speed: pick(vehicleStatus.speed, raw.speed != null ? `${str(raw.speed)} km/h` : ""),
+        normal,
+      };
+    })(),
     journey: arr(raw.journey ?? raw.timeline).map(mapJourneyStep),
     telemetry: mapTelemetry(raw),
     packageDetails: {

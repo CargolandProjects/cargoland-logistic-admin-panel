@@ -163,7 +163,14 @@ export interface ShipmentDetail extends Shipment {
   progress: number;
   journey: JourneyStep[];
   telemetry: TelemetryReading[];
-  vehicleStatus: { headline: string; subtext: string; location: string; speed: string };
+  vehicleStatus: {
+    headline: string;
+    subtext: string;
+    location: string;
+    speed: string;
+    /** Whether the vehicle is operating normally (drives the telemetry banner color). */
+    normal: boolean;
+  };
   packageDetails: PackageDetails;
   recipient: Recipient;
   eventLog: EventLogEntry[];

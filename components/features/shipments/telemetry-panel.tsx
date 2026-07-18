@@ -1,6 +1,6 @@
-import { CheckCircle2, MapPin, Gauge, User, Truck } from "lucide-react";
-import { toast } from "sonner";
+import { AlertTriangle, CheckCircle2, MapPin, Gauge, User, Truck } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { ShipmentDetail } from "@/types/shipment";
 
@@ -17,12 +17,32 @@ export function TelemetryPanel({
 
   return (
     <div className="space-y-4">
-      {/* Operating status */}
-      <div className="flex items-start gap-2 rounded-lg bg-green-50 p-3">
-        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-green-600" />
+      {/* Operating status — color reflects the real vehicle state */}
+      <div
+        className={cn(
+          "flex items-start gap-2 rounded-lg p-3",
+          vehicleStatus.normal ? "bg-green-50" : "bg-amber-50",
+        )}
+      >
+        {vehicleStatus.normal ? (
+          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-green-600" />
+        ) : (
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+        )}
         <div>
-          <p className="text-sm font-semibold text-green-800">{vehicleStatus.headline}</p>
-          <p className="text-xs text-green-700">{vehicleStatus.subtext}</p>
+          <p
+            className={cn(
+              "text-sm font-semibold",
+              vehicleStatus.normal ? "text-green-800" : "text-amber-800",
+            )}
+          >
+            {vehicleStatus.headline}
+          </p>
+          {vehicleStatus.subtext && (
+            <p className={cn("text-xs", vehicleStatus.normal ? "text-green-700" : "text-amber-700")}>
+              {vehicleStatus.subtext}
+            </p>
+          )}
         </div>
       </div>
 
@@ -67,13 +87,6 @@ export function TelemetryPanel({
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={onReassignDriver}>
             Reassign Driver
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => toast.info("Full route view isn't available yet.")}
-          >
-            View Full Route
           </Button>
           <Button variant="outline" size="sm" className="text-destructive" onClick={onFlagDelay}>
             Flag Delay

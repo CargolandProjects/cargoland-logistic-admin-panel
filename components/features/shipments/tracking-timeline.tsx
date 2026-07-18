@@ -27,8 +27,11 @@ export function TrackingTimeline({
       </div>
 
       {/* Steps */}
-      <ol className="relative space-y-6">
-        {steps.map((step, i) => {
+      {steps.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">No journey updates yet.</p>
+      ) : (
+        <ol className="relative space-y-6">
+          {steps.map((step, i) => {
           const isLast = i === steps.length - 1;
           return (
             <li key={step.title} className="relative flex gap-3">
@@ -74,7 +77,8 @@ export function TrackingTimeline({
             </li>
           );
         })}
-      </ol>
+        </ol>
+      )}
     </div>
   );
 }
