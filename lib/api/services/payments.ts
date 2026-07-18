@@ -70,7 +70,7 @@ function filterTransactions(
   return out;
 }
 
-async function getSummary(): Promise<PaymentSummary> {
+export async function getSummary(): Promise<PaymentSummary> {
   if (MOCKS.payments) return MOCK_PAYMENTS.summary;
   return api.get<PaymentSummary>("/admin/payments/stats");
 }
