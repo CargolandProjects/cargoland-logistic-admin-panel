@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { Card } from "@/components/ui/card";
+import { StateBlock } from "@/components/shared/state-block";
 import { ShipmentFilters } from "@/components/features/shipments/shipment-filters";
 import { ShipmentsTable } from "@/components/features/shipments/shipments-table";
 import { useShipments } from "@/lib/query/hooks/use-shipments";
@@ -17,7 +18,7 @@ export default function ShipmentsPage() {
     () => ({ search, type, status, transport, take: 100 }),
     [search, type, status, transport],
   );
-  const { data, isLoading } = useShipments(filters);
+  const { data, isLoading, isError } = useShipments(filters);
 
   // The status tabs further narrow the fetched rows client-side.
   const rows = useMemo(() => {
@@ -31,7 +32,11 @@ export default function ShipmentsPage() {
       <PageHeader title="Shipment Tracking" />
       <Card className="gap-4 p-5">
         <ShipmentFilters />
-        <ShipmentsTable data={rows} isLoading={isLoading} />
+        {isError ? (
+          <StateBlock variant="error" message="We couldn't load shipments. Please try again." />
+        ) : (
+          <ShipmentsTable data={rows} isLoading={isLoading} />
+        )}
       </Card>
     </div>
   );

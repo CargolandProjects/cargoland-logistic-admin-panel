@@ -38,7 +38,7 @@ export function StatCard({
   label,
   value,
   icon: Icon,
-  iconClassName = "bg-indigo-100 text-indigo-600",
+  iconClassName = "bg-primary/10 text-primary",
   trend,
   trendDirection = "up",
   tone = "default",
@@ -61,7 +61,7 @@ export function StatCard({
       </div>
       <div className="mt-3 flex items-center gap-3">
         {Icon && (
-          <span className={cn("flex size-10 items-center justify-center rounded-lg", iconClassName)}>
+          <span className={cn("flex size-10 items-center justify-center rounded-xl", iconClassName)}>
             <Icon className="size-5" />
           </span>
         )}

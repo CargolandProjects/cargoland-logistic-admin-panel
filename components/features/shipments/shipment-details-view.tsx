@@ -8,22 +8,42 @@ import { formatNaira, formatDate } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/shared/page-header";
+import { StateBlock } from "@/components/shared/state-block";
 import { AssignShipmentToVehicleDialog } from "@/components/features/shipments/assign-shipment-to-vehicle-dialog";
 import { useShipment, useShipmentRecord } from "@/lib/query/hooks/use-shipments";
 import type { ShipmentParty } from "@/types/shipment";
 
 export function ShipmentDetailsView({ id }: { id: string }) {
-  const { data: record, isLoading } = useShipmentRecord(id);
+  const { data: record, isLoading, isError } = useShipmentRecord(id);
   // Assigned vehicle (plate/id) is only available on the live-tracking payload.
   const { data: detail } = useShipment(id);
   const [assignOpen, setAssignOpen] = useState(false);
 
-  if (isLoading || !record) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-9 w-80" />
         <Skeleton className="h-5 w-40" />
         <Skeleton className="h-80" />
+      </div>
+    );
+  }
+
+  if (isError || !record) {
+    return (
+      <div className="space-y-6">
+        <BackLink />
+        <Card className="p-5">
+          <StateBlock
+            variant={isError ? "error" : "not-found"}
+            message={
+              isError
+                ? "We couldn't load this shipment. Please try again."
+                : "This shipment doesn't exist or may have been removed."
+            }
+          />
+        </Card>
       </div>
     );
   }
@@ -37,41 +57,34 @@ export function ShipmentDetailsView({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-foreground">
-          Shipment — {trackingLabel}
-          {vehicleId ? ` ↔ ${vehicleId}` : ""}
-        </h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-red-200 text-brand-red"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign to truck
-          </Button>
-          <Button
-            size="sm"
-            className="bg-brand-red text-white"
-            nativeButton={false}
-            render={<Link href={`/shipments/${id}/track`} />}
-          >
-            Track Shipment
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={`Shipment — ${trackingLabel}${vehicleId ? ` ↔ ${vehicleId}` : ""}`}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-200 text-brand-red"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign to truck
+            </Button>
+            <Button
+              size="sm"
+              className="bg-brand-red text-white"
+              nativeButton={false}
+              render={<Link href={`/shipments/${id}/track`} />}
+            >
+              Track Shipment
+            </Button>
+          </>
+        }
+      />
 
-      <Link
-        href="/shipments"
-        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-      >
-        <ChevronLeft className="size-4" /> Back to Shipments
-      </Link>
+      <BackLink />
 
       {/* Shipment details */}
-      <Card className="gap-6 p-6">
+      <Card className="gap-6 p-5">
         <h2 className="text-base font-semibold text-foreground">Shipment details</h2>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -109,7 +122,11 @@ export function ShipmentDetailsView({ id }: { id: string }) {
                   key={img.publicId || i}
                   src={img.url}
                   alt={`Package ${i + 1}`}
-                  className="size-14 rounded-lg border border-border object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                  className="size-14 rounded-lg border border-border bg-secondary object-cover"
                 />
               ))}
             </div>
@@ -127,6 +144,17 @@ export function ShipmentDetailsView({ id }: { id: string }) {
         shipmentTrackingId={record.trackingId}
       />
     </div>
+  );
+}
+
+function BackLink() {
+  return (
+    <Link
+      href="/shipments"
+      className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+    >
+      <ChevronLeft className="size-4" /> Back to Shipments
+    </Link>
   );
 }
 

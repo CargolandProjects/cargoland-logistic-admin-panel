@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 import { DataTable, type Column, type RowAction } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { formatDateTime } from "@/lib/utils";
 import { useShipmentPlateMap } from "@/lib/query/hooks/use-vehicles";
 import { shipmentStatusLabel, type Shipment } from "@/types/shipment";
 
@@ -29,19 +29,20 @@ export function ShipmentsTable({ data, isLoading }: { data: Shipment[]; isLoadin
       header: "Vehicle Plate No",
       cell: (r) => r.plateNumber || plateMap[r.trackingId] || "—",
     },
-    { header: "Last Updated", cell: (r) => <span className="text-muted-foreground">{r.lastUpdated}</span> },
+    {
+      header: "Last Updated",
+      cell: (r) => (
+        <span className="whitespace-nowrap text-muted-foreground">
+          {formatDateTime(r.lastUpdated)}
+        </span>
+      ),
+    },
     { header: "Status", cell: (r) => <StatusBadge status={shipmentStatusLabel(r.status)} /> },
   ];
 
   const actions: RowAction<Shipment>[] = [
     { label: "View", onSelect: (r) => router.push(`/shipments/${r.id}`) },
     { label: "Track", onSelect: (r) => router.push(`/shipments/${r.id}/track`) },
-    {
-      label: "Delete",
-      destructive: true,
-      // No delete endpoint in the API yet.
-      onSelect: () => toast.info("Delete isn't available yet."),
-    },
   ];
 
   return (

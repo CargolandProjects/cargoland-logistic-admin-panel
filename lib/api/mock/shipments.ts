@@ -91,6 +91,7 @@ export function mockShipmentDetail(id: string): ShipmentDetail {
       subtext: "All systems normal · Last ping 1 min ago",
       location: "3rd Mainland Bridge, Lagos, Nigeria",
       speed: "47 km/h",
+      normal: true,
     },
     journey: [
       {

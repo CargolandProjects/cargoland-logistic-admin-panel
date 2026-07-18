@@ -64,10 +64,10 @@ export default function UsersPage() {
       <PageHeader title="Users" subtitle="Customer accounts derived from shipment activity." />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Customers" value={stats.total} icon={UsersIcon} iconClassName="bg-indigo-100 text-indigo-600" />
-        <StatCard label="Total Shipments" value={stats.bookings} icon={Package} iconClassName="bg-blue-100 text-blue-600" />
-        <StatCard label="Total Revenue" value={formatNaira(stats.revenue)} icon={Wallet} iconClassName="bg-green-100 text-green-600" />
-        <StatCard label="Delivered" value={stats.delivered} icon={CheckCircle2} iconClassName="bg-emerald-100 text-emerald-600" />
+        <StatCard label="Total Customers" value={stats.total} icon={UsersIcon} />
+        <StatCard label="Total Shipments" value={stats.bookings} icon={Package} />
+        <StatCard label="Total Revenue" value={formatNaira(stats.revenue)} icon={Wallet} />
+        <StatCard label="Delivered" value={stats.delivered} icon={CheckCircle2} />
       </div>
 
       <Card className="gap-4 p-5">

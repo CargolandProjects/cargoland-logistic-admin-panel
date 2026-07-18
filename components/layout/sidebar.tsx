@@ -6,8 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Package, ChevronLeft, LogOut } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { NAV_GROUPS } from "@/lib/nav";
 import { useUIStore } from "@/stores/ui-store";
+import { useAccess } from "@/lib/query/hooks/use-access";
 import { useProfile } from "@/lib/query/hooks/use-profile";
 import { useNavCounts } from "@/lib/query/hooks/use-nav-counts";
 import { logout } from "@/lib/api/services/auth";
@@ -22,6 +22,7 @@ export function Sidebar() {
   const toggle = useUIStore((s) => s.toggleSidebar);
   const { data: profile } = useProfile();
   const counts = useNavCounts();
+  const { allowedNav } = useAccess();
 
   const onLogout = async () => {
     await logout(); // clears the auth token
@@ -60,7 +61,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-2">
-        {NAV_GROUPS.map((group) => (
+        {allowedNav.map((group) => (
           <div key={group.title} className="mb-4">
             {!collapsed && (
               <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">

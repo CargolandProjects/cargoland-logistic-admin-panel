@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TablePagination } from "@/components/shared/table-pagination";
 import {
   DropdownMenu,
@@ -99,11 +100,20 @@ export function DataTable<T>({
         </TableHeader>
         <TableBody>
           {isLoading ? (
-            <TableRow>
-              <TableCell colSpan={colSpan} className="py-10 text-center text-muted-foreground">
-                Loading…
-              </TableCell>
-            </TableRow>
+            Array.from({ length: 5 }).map((_, r) => (
+              <TableRow key={`sk-${r}`} className="hover:bg-transparent">
+                {columns.map((col, c) => (
+                  <TableCell key={c} className={col.className}>
+                    <Skeleton className="h-4 w-full max-w-[140px]" />
+                  </TableCell>
+                ))}
+                {actions && (
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto size-7 rounded-md" />
+                  </TableCell>
+                )}
+              </TableRow>
+            ))
           ) : data.length === 0 ? (
             <TableRow>
               <TableCell colSpan={colSpan} className="py-10 text-center text-muted-foreground">

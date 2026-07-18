@@ -10,6 +10,7 @@ export const qk = {
   dashboard: {
     all: ["dashboard"] as const,
     summary: () => [...qk.dashboard.all, "summary"] as const,
+    analytics: () => [...qk.dashboard.all, "analytics"] as const,
   },
   shipments: {
     all: ["shipments"] as const,
@@ -21,6 +22,10 @@ export const qk = {
     all: ["pricing"] as const,
     list: (filters?: unknown) => [...qk.pricing.all, "list", filters ?? {}] as const,
     detail: (id: string) => [...qk.pricing.all, "detail", id] as const,
+    // Domestic (local) pricing shares the `pricing` prefix so a single
+    // `qk.pricing.all` invalidation refreshes both tabs.
+    localList: (filters?: unknown) => [...qk.pricing.all, "local", "list", filters ?? {}] as const,
+    localDetail: (id: string) => [...qk.pricing.all, "local", "detail", id] as const,
   },
   payments: {
     all: ["payments"] as const,

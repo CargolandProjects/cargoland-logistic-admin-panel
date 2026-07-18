@@ -9,6 +9,10 @@ const DOT: Record<EventLogEntry["tone"], string> = {
 };
 
 export function EventLog({ entries }: { entries: EventLogEntry[] }) {
+  if (entries.length === 0) {
+    return <p className="py-6 text-center text-sm text-muted-foreground">No events yet.</p>;
+  }
+
   return (
     <ul className="space-y-4">
       {entries.map((e) => (

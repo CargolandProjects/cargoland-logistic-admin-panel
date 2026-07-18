@@ -36,6 +36,7 @@ export function RecentBookings({ data }: { data: RecentBooking[] }) {
       columns={columns}
       data={data}
       rowKey={(r) => r.id}
+      pageSize={5}
       emptyMessage="No recent bookings."
     />
   );

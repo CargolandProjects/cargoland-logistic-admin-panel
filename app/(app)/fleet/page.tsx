@@ -175,9 +175,9 @@ export default function FleetPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Total Vehicles" value={vehicleStats.total} icon={Warehouse} iconClassName="bg-indigo-100 text-indigo-600" trend="Registered vehicles" />
-            <StatCard label="Active Now" value={vehicleStats.active} icon={Truck} iconClassName="bg-green-100 text-green-600" trend="On route" />
-            <StatCard label="In Maintenance" value={vehicleStats.maintenance} icon={Wrench} iconClassName="bg-amber-100 text-amber-600" trend="Scheduled" trendDirection="down" />
+            <StatCard label="Total Vehicles" value={vehicleStats.total} icon={Warehouse} />
+            <StatCard label="Active Now" value={vehicleStats.active} icon={Truck} />
+            <StatCard label="In Maintenance" value={vehicleStats.maintenance} icon={Wrench} />
           </div>
 
           <Card className="p-2">
@@ -206,9 +206,9 @@ export default function FleetPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard label="Total Drivers" value={driverStats.total} icon={Users} iconClassName="bg-indigo-100 text-indigo-600" trend="On the platform" />
-            <StatCard label="Assigned" value={driverStats.assigned} icon={UserCheck} iconClassName="bg-green-100 text-green-600" trend="Linked to a vehicle" />
-            <StatCard label="Unassigned" value={driverStats.unassigned} icon={UserMinus} iconClassName="bg-amber-100 text-amber-600" trend="No vehicle linked" trendDirection="down" />
+            <StatCard label="Total Drivers" value={driverStats.total} icon={Users} />
+            <StatCard label="Assigned" value={driverStats.assigned} icon={UserCheck} />
+            <StatCard label="Unassigned" value={driverStats.unassigned} icon={UserMinus} />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

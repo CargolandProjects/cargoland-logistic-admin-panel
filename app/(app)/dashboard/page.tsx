@@ -4,34 +4,46 @@ import Link from "next/link";
 import {
   ClipboardList,
   Truck,
-  Banknote,
-  FileText,
+  Wallet,
+  FileClock,
   PackageCheck,
   Users,
   ArrowRight,
   type LucideIcon,
 } from "lucide-react";
 
-import { useDashboard } from "@/lib/query/hooks/use-dashboard";
+import { useDashboard, useDashboardAnalytics } from "@/lib/query/hooks/use-dashboard";
 import { useProfile } from "@/lib/query/hooks/use-profile";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/shared/stat-card";
 import { RecentBookings } from "@/components/features/dashboard/recent-bookings";
 import { ActivityFeed } from "@/components/features/dashboard/activity-feed";
+import { ChartCard } from "@/components/features/dashboard/charts/chart-card";
+import { StatusDonut } from "@/components/features/dashboard/charts/status-donut";
+import { TypeSplit } from "@/components/features/dashboard/charts/type-split";
+import { PaymentsBar } from "@/components/features/dashboard/charts/payments-bar";
 
-const STAT_ICONS: Record<string, { icon: LucideIcon; className: string }> = {
-  bookings: { icon: ClipboardList, className: "bg-indigo-100 text-indigo-600" },
-  active: { icon: Truck, className: "bg-blue-100 text-blue-600" },
-  revenue: { icon: Banknote, className: "bg-rose-100 text-rose-600" },
-  quotes: { icon: FileText, className: "bg-amber-100 text-amber-600" },
-  delivered: { icon: PackageCheck, className: "bg-violet-100 text-violet-600" },
-  users: { icon: Users, className: "bg-teal-100 text-teal-600" },
+// Icon per stat. Chips share one restrained mono tint (StatCard's default), so
+// the row reads as a cohesive unit — color is reserved for badges/charts.
+const STAT_ICONS: Record<string, LucideIcon> = {
+  bookings: ClipboardList,
+  active: Truck,
+  revenue: Wallet,
+  quotes: FileClock,
+  delivered: PackageCheck,
+  users: Users,
 };
 
 export default function DashboardPage() {
   const { data, isLoading } = useDashboard();
+  const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics();
   const { data: profile } = useProfile();
+
+  const hasStatus = (analytics?.statusCounts ?? []).some((d) => d.value > 0);
+  const hasType = (analytics?.typeCounts ?? []).some((d) => d.value > 0);
+  const payments = analytics?.payments ?? { totalCollected: 0, pending: 0, failed: 0 };
+  const hasPayments = payments.totalCollected + payments.pending + payments.failed > 0;
   const firstName = profile?.name?.split(" ")[0] || "there";
 
   const today = new Date().toLocaleDateString("en-GB", {
@@ -44,8 +56,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Hello {firstName}</h1>
-        <p className="text-sm text-muted-foreground">It&apos;s {today}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          Hello {firstName}
+        </h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">It&apos;s {today}</p>
       </div>
 
       {/* Stat cards */}
@@ -54,20 +68,44 @@ export default function DashboardPage() {
           ? Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-32 rounded-xl" />
             ))
-          : data?.stats.map((stat) => {
-              const meta = STAT_ICONS[stat.key];
-              return (
-                <StatCard
-                  key={stat.key}
-                  label={stat.label}
-                  value={stat.value}
-                  icon={meta?.icon}
-                  iconClassName={meta?.className}
-                  trend={stat.trend}
-                  trendDirection={stat.trendDirection}
-                />
-              );
-            })}
+          : data?.stats.map((stat) => (
+              <StatCard
+                key={stat.key}
+                label={stat.label}
+                value={stat.value}
+                icon={STAT_ICONS[stat.key]}
+                trend={stat.trend}
+                trendDirection={stat.trendDirection}
+              />
+            ))}
+      </div>
+
+      {/* Analytics charts */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <ChartCard
+          title="Shipment Status"
+          isLoading={analyticsLoading}
+          isEmpty={!hasStatus}
+          emptyMessage="No shipments yet."
+        >
+          <StatusDonut data={analytics?.statusCounts ?? []} />
+        </ChartCard>
+        <ChartCard
+          title="Shipment Type"
+          isLoading={analyticsLoading}
+          isEmpty={!hasType}
+          emptyMessage="No shipments yet."
+        >
+          <TypeSplit data={analytics?.typeCounts ?? []} />
+        </ChartCard>
+        <ChartCard
+          title="Payments"
+          isLoading={analyticsLoading}
+          isEmpty={!hasPayments}
+          emptyMessage="No payments yet."
+        >
+          <PaymentsBar data={payments} />
+        </ChartCard>
       </div>
 
       {/* Recent bookings + activity */}
@@ -92,12 +130,6 @@ export default function DashboardPage() {
         <Card className="p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Activity Feed</h2>
-            <Link
-              href="#"
-              className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-            >
-              View all <ArrowRight className="size-4" />
-            </Link>
           </div>
           {isLoading ? (
             <Skeleton className="h-48 w-full" />

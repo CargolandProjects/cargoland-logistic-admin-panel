@@ -1,0 +1,7 @@
+# pnpm 10+ blocks dependency lifecycle scripts by default. These two ship
+# native binaries the app genuinely needs, so their build scripts are approved:
+#   - sharp:         image optimization used by Next.js
+#   - unrs-resolver: native module resolver used by eslint-config-next
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
