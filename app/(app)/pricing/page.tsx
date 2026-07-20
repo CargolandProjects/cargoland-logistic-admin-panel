@@ -13,13 +13,16 @@ import { PricingTable } from "@/components/features/pricing/pricing-table";
 import { DomesticPricingTable } from "@/components/features/pricing/domestic-pricing-table";
 import { usePricing } from "@/lib/query/hooks/use-pricing";
 import { useDomesticPricing } from "@/lib/query/hooks/use-domestic-pricing";
+import { domesticRouteMode } from "@/types/pricing";
 
 type PricingTab = "international" | "domestic";
+type DomesticSub = "range" | "single";
 
 function PricingTabs() {
   const params = useSearchParams();
   const initialTab: PricingTab = params.get("tab") === "domestic" ? "domestic" : "international";
   const [tab, setTab] = useState<PricingTab>(initialTab);
+  const [domSub, setDomSub] = useState<DomesticSub>("range");
 
   const intl = usePricing();
   const domestic = useDomesticPricing();
@@ -31,7 +34,17 @@ function PricingTabs() {
     [intl.data],
   );
 
-  const addHref = tab === "domestic" ? "/pricing/new?type=domestic" : "/pricing/new";
+  const rangeRows = useMemo(
+    () => (domestic.data ?? []).filter((r) => domesticRouteMode(r) === "range"),
+    [domestic.data],
+  );
+  const singleRows = useMemo(
+    () => (domestic.data ?? []).filter((r) => domesticRouteMode(r) === "single"),
+    [domestic.data],
+  );
+
+  const addHref =
+    tab === "domestic" ? `/pricing/new?type=domestic&mode=${domSub}` : "/pricing/new";
 
   return (
     <div className="space-y-6">
@@ -62,9 +75,32 @@ function PricingTabs() {
         </TabsContent>
 
         <TabsContent value="domestic">
-          <Card className="p-2">
-            <DomesticPricingTable data={domestic.data ?? []} isLoading={domestic.isLoading} />
-          </Card>
+          <Tabs value={domSub} onValueChange={(v) => setDomSub(v as DomesticSub)}>
+            <TabsList variant="line">
+              <TabsTrigger value="range">Range</TabsTrigger>
+              <TabsTrigger value="single">Single</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="range">
+              <Card className="p-2">
+                <DomesticPricingTable
+                  mode="range"
+                  data={rangeRows}
+                  isLoading={domestic.isLoading}
+                />
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="single">
+              <Card className="p-2">
+                <DomesticPricingTable
+                  mode="single"
+                  data={singleRows}
+                  isLoading={domestic.isLoading}
+                />
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>

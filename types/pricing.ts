@@ -76,3 +76,16 @@ export interface DomesticPricingInput {
   toWhereCity: string;
   pricingBrackets: Array<{ minWeight: number; maxWeight: number; ratePerKg: number }>;
 }
+
+/** How a domestic route prices weight — used to split the Range / Single sub-tabs. */
+export type DomesticPricingMode = "range" | "single";
+
+/**
+ * Classify a route: "single" when it has ≥1 valid bracket and every valid bracket is a
+ * single exact weight (min === max); otherwise "range" (any range bracket → range).
+ */
+export function domesticRouteMode(row: DomesticPricing): DomesticPricingMode {
+  const valid = row.brackets.filter((b) => b.maxWeight >= b.minWeight);
+  if (valid.length === 0) return "range";
+  return valid.every((b) => b.maxWeight === b.minWeight) ? "single" : "range";
+}

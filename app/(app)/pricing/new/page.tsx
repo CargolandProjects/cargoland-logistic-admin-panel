@@ -7,10 +7,11 @@ import { DomesticPricingForm } from "@/components/features/pricing/domestic-pric
 export default async function NewPricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; mode?: string }>;
 }) {
-  const { type } = await searchParams;
+  const { type, mode } = await searchParams;
   const isDomestic = type === "domestic";
+  const domesticMode = mode === "single" ? "single" : "range";
 
   return (
     <div className="space-y-6">
@@ -23,7 +24,7 @@ export default async function NewPricingPage({
         </Link>
         <span className="text-sm font-medium text-muted-foreground">Add New Pricing</span>
       </div>
-      {isDomestic ? <DomesticPricingForm /> : <PricingForm />}
+      {isDomestic ? <DomesticPricingForm mode={domesticMode} /> : <PricingForm />}
     </div>
   );
 }
