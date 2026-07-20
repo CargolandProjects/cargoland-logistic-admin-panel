@@ -18,7 +18,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -30,8 +29,12 @@ import {
   useCreateDomesticPricing,
   useUpdateDomesticPricing,
 } from "@/lib/query/hooks/use-domestic-pricing";
-import { useSetPopularRoute } from "@/lib/query/hooks/use-pricing";
-import { PRICING_TYPE_LABELS, type DomesticPricing } from "@/types/pricing";
+import {
+  PRICING_TYPE_LABELS,
+  domesticRouteMode,
+  type DomesticPricing,
+  type DomesticPricingMode,
+} from "@/types/pricing";
 import {
   DOMESTIC_COUNTRIES,
   STATES_BY_COUNTRY,
@@ -41,11 +44,14 @@ import {
 
 const tierSchema = z
   .object({
+    // UI-only: "exact" is a single weight (min === max); "range" is min..max.
+    // Not sent to the backend.
+    mode: z.enum(["range", "exact"]),
     minWeight: z.number({ message: "Required" }).min(0, "Min ≥ 0"),
     maxWeight: z.number({ message: "Required" }),
     ratePerKg: z.number({ message: "Required" }).gt(0, "Rate must be > 0"),
   })
-  .refine((t) => t.maxWeight > t.minWeight, {
+  .refine((t) => (t.mode === "exact" ? t.maxWeight === t.minWeight : t.maxWeight > t.minWeight), {
     message: "Max must be greater than min",
     path: ["maxWeight"],
   });
@@ -81,16 +87,28 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-const EMPTY_TIER = { minWeight: 0, maxWeight: 0, ratePerKg: 0 };
-
-export function DomesticPricingForm({ initial }: { initial?: DomesticPricing }) {
+export function DomesticPricingForm({
+  initial,
+  mode,
+}: {
+  initial?: DomesticPricing;
+  mode?: DomesticPricingMode;
+}) {
   const router = useRouter();
   const create = useCreateDomesticPricing();
   const update = useUpdateDomesticPricing(initial?.id ?? "");
-  const setPopular = useSetPopularRoute();
   const pending = create.isPending || update.isPending;
 
-  const [isPopular, setIsPopular] = useState(initial?.isPopularRoute ?? false);
+  // Range vs single-value is chosen by the Domestic sub-tab (or derived from an
+  // existing route on edit) — every tier in this form is that kind.
+  const formMode: DomesticPricingMode = initial ? domesticRouteMode(initial) : mode ?? "range";
+  const newTier = () => ({
+    mode: (formMode === "single" ? "exact" : "range") as "range" | "exact",
+    minWeight: 0,
+    maxWeight: 0,
+    ratePerKg: 0,
+  });
+
   // Client-only country scoping the From/To state options (not a backend field).
   const [country, setCountry] = useState<string>(
     () => countryForState(initial?.fromState) ?? DOMESTIC_COUNTRIES[0],
@@ -112,11 +130,12 @@ export function DomesticPricingForm({ initial }: { initial?: DomesticPricing }) 
       toWhereCity: initial?.toWhereCity ?? "",
       tiers: initial?.brackets.length
         ? initial.brackets.map((b) => ({
+            mode: (b.minWeight === b.maxWeight ? "exact" : "range") as "range" | "exact",
             minWeight: b.minWeight,
             maxWeight: b.maxWeight,
             ratePerKg: b.ratePerKg,
           }))
-        : [EMPTY_TIER],
+        : [newTier()],
     },
   });
 
@@ -131,11 +150,6 @@ export function DomesticPricingForm({ initial }: { initial?: DomesticPricing }) 
   };
 
   const stateOptions = STATES_BY_COUNTRY[country] ?? [];
-
-  const onTogglePopular = (val: boolean) => {
-    setIsPopular(val);
-    if (initial) setPopular.mutate({ id: initial.id, isPopularRoute: val });
-  };
 
   // Switching to International in create mode routes to the existing form.
   const onTypeChange = (val: string) => {
@@ -169,22 +183,15 @@ export function DomesticPricingForm({ initial }: { initial?: DomesticPricing }) 
       return;
     }
     create.mutate(body, {
-      onSuccess: async (created) => {
-        if (isPopular && created?.id) {
-          await setPopular
-            .mutateAsync({ id: created.id, isPopularRoute: true })
-            .catch(() => {});
-        }
-        router.push("/pricing?tab=domestic");
-      },
+      onSuccess: () => router.push("/pricing?tab=domestic"),
     });
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Card className="gap-6 p-6">
-        {/* Header: shipment type + popular */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Header: shipment type */}
+        <div className="flex flex-wrap items-center gap-3">
           <Select
             value="DOMESTIC"
             onValueChange={(v) => onTypeChange(v as string)}
@@ -200,15 +207,6 @@ export function DomesticPricingForm({ initial }: { initial?: DomesticPricing }) 
               <SelectItem value="INTERNATIONAL">International Shipping</SelectItem>
             </SelectContent>
           </Select>
-
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={isPopular}
-              onCheckedChange={onTogglePopular}
-              disabled={setPopular.isPending}
-            />
-            <span className="text-sm font-medium text-foreground">Popular Route</span>
-          </div>
         </div>
 
         {/* Add Location */}
@@ -279,11 +277,19 @@ export function DomesticPricingForm({ initial }: { initial?: DomesticPricing }) 
 
         {/* Weight tiers */}
         <div className="space-y-3">
-          {fields.map((field, i) => (
+          <h3 className="text-base font-semibold text-foreground">
+            {formMode === "single" ? "Single-value pricing" : "Range pricing"}
+          </h3>
+          {fields.map((field, i) => {
+            const tierMode = watch(`tiers.${i}.mode`);
+            const isExact = tierMode === "exact";
+            return (
             <div key={field.id} className="grid items-start gap-4 sm:grid-cols-2">
               <div>
-                <Label className="text-sm font-semibold text-foreground">Weight range (kg)</Label>
-                <div className="mt-1 flex items-center gap-2 rounded-lg bg-secondary/50 p-3">
+                <Label className="mb-1 block text-sm font-semibold text-foreground">
+                  {isExact ? "Weight (kg)" : "Weight range (kg)"}
+                </Label>
+                <div className="flex items-center gap-2 rounded-lg bg-secondary/50 p-3">
                   <Input
                     type="number"
                     step="any"
@@ -291,20 +297,33 @@ export function DomesticPricingForm({ initial }: { initial?: DomesticPricing }) 
                     onFocus={selectOnFocus}
                     onKeyDown={blockNegativeKeys}
                     className="h-8 w-full border-0 bg-transparent px-0 font-semibold shadow-none focus-visible:ring-0"
-                    placeholder="0"
-                    {...register(`tiers.${i}.minWeight`, { valueAsNumber: true })}
+                    placeholder={isExact ? "Weight" : "Min"}
+                    {...register(`tiers.${i}.minWeight`, {
+                      valueAsNumber: true,
+                      // Exact weight keeps max in sync with min.
+                      onChange: isExact
+                        ? (e) =>
+                            setValue(`tiers.${i}.maxWeight`, e.target.valueAsNumber || 0, {
+                              shouldValidate: true,
+                            })
+                        : undefined,
+                    })}
                   />
-                  <span className="text-muted-foreground">–</span>
-                  <Input
-                    type="number"
-                    step="any"
-                    min={0}
-                    onFocus={selectOnFocus}
-                    onKeyDown={blockNegativeKeys}
-                    className="h-8 w-full border-0 bg-transparent px-0 font-semibold shadow-none focus-visible:ring-0"
-                    placeholder="0"
-                    {...register(`tiers.${i}.maxWeight`, { valueAsNumber: true })}
-                  />
+                  {!isExact && (
+                    <>
+                      <span className="text-muted-foreground">–</span>
+                      <Input
+                        type="number"
+                        step="any"
+                        min={0}
+                        onFocus={selectOnFocus}
+                        onKeyDown={blockNegativeKeys}
+                        className="h-8 w-full border-0 bg-transparent px-0 font-semibold shadow-none focus-visible:ring-0"
+                        placeholder="Max"
+                        {...register(`tiers.${i}.maxWeight`, { valueAsNumber: true })}
+                      />
+                    </>
+                  )}
                   <span className="whitespace-nowrap text-xs text-muted-foreground">kg</span>
                 </div>
                 {(errors.tiers?.[i]?.minWeight || errors.tiers?.[i]?.maxWeight) && (
@@ -360,18 +379,15 @@ export function DomesticPricingForm({ initial }: { initial?: DomesticPricing }) 
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {errors.tiers?.root?.message && (
             <p className="text-xs text-destructive">{errors.tiers.root.message}</p>
           )}
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => append(EMPTY_TIER)}
-          >
-            <Plus className="size-4" /> Add more
+          <Button type="button" variant="secondary" onClick={() => append(newTier())}>
+            <Plus className="size-4" /> Add {formMode === "single" ? "weight" : "range"}
           </Button>
         </div>
       </Card>

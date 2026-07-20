@@ -21,11 +21,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useDeleteDomesticPricing } from "@/lib/query/hooks/use-domestic-pricing";
-import { useSetPopularRoute } from "@/lib/query/hooks/use-pricing";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { formatNaira, formatWeightRange } from "@/lib/utils";
 import { DOMESTIC_COUNTRIES, STATES_BY_COUNTRY } from "@/lib/geo";
-import type { DomesticPricing, PricingBracket } from "@/types/pricing";
+import type { DomesticPricing, DomesticPricingMode, PricingBracket } from "@/types/pricing";
 
 // All states from the geo dataset, for the "filter by state" picker.
 const STATE_OPTIONS = DOMESTIC_COUNTRIES.flatMap((c) => STATES_BY_COUNTRY[c] ?? []).sort((a, b) =>
@@ -40,23 +39,30 @@ interface WeightRange {
   count: number; // how many routes define this range (drives the default)
 }
 
-/** Valid (non-degenerate) brackets for a route, sorted ascending. */
-function validBrackets(row: DomesticPricing): PricingBracket[] {
+/** True when a bracket belongs to the active mode (single = exact weight). */
+function inMode(b: PricingBracket, mode: DomesticPricingMode): boolean {
+  if (b.maxWeight < b.minWeight) return false;
+  return mode === "single" ? b.maxWeight === b.minWeight : b.maxWeight > b.minWeight;
+}
+
+/** Brackets for a route that match the active mode, sorted ascending. */
+function validBrackets(row: DomesticPricing, mode: DomesticPricingMode): PricingBracket[] {
   return row.brackets
-    .filter((b) => b.maxWeight > b.minWeight)
+    .filter((b) => inMode(b, mode))
     .sort((a, b) => a.minWeight - b.minWeight || a.maxWeight - b.maxWeight);
 }
 
 export function DomesticPricingTable({
   data,
   isLoading,
+  mode,
 }: {
   data: DomesticPricing[];
   isLoading: boolean;
+  mode: DomesticPricingMode;
 }) {
   const router = useRouter();
   const del = useDeleteDomesticPricing();
-  const setPopular = useSetPopularRoute();
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -64,15 +70,15 @@ export function DomesticPricingTable({
 
   const [stateFilter, setStateFilter] = useState("all");
 
-  // Routes each define their own ranges, so the table can't share columns. We
-  // pick ONE weight range (a dropdown) and show every route's price for it.
-  // Only well-formed ranges are offered: degenerate ones (max <= min) are hidden
-  // as invalid/legacy data, and identical ranges are merged (route count shown).
+  // Routes each define their own weights, so the table can't share columns. We
+  // pick ONE weight (a dropdown) and show every route's price for it — only the
+  // active mode's brackets (single "4 kg" vs range "0–9 kg"); identical entries
+  // merge (route count shown).
   const ranges = useMemo<WeightRange[]>(() => {
     const map = new Map<string, WeightRange>();
     for (const row of data) {
       for (const b of row.brackets) {
-        if (!(b.maxWeight > b.minWeight)) continue;
+        if (!inMode(b, mode)) continue;
         const key = `${b.minWeight}-${b.maxWeight}`;
         const existing = map.get(key);
         if (existing) existing.count += 1;
@@ -87,7 +93,7 @@ export function DomesticPricingTable({
       }
     }
     return [...map.values()].sort((a, b) => a.min - b.min || a.max - b.max);
-  }, [data]);
+  }, [data, mode]);
 
   // Default to the widest-coverage range so the first view isn't sparse.
   const defaultKey = useMemo(() => {
@@ -137,16 +143,12 @@ export function DomesticPricingTable({
       header: activeRange ? `Price /kg · ${activeRange.label}` : "Price /kg",
       headClassName: "text-right",
       className: "text-right",
-      cell: (r) => <PriceCell row={r} activeRange={activeRange} />,
+      cell: (r) => <PriceCell row={r} activeRange={activeRange} mode={mode} />,
     },
   ];
 
   const actions: RowAction<DomesticPricing>[] = [
     { label: "Edit", onSelect: (r) => router.push(`/pricing/${r.id}?type=domestic`) },
-    {
-      label: "Popular Route",
-      onSelect: (r) => setPopular.mutate({ id: r.id, isPopularRoute: true }),
-    },
     { label: "Delete", destructive: true, onSelect: (r) => del.mutate(r.id) },
   ];
 
@@ -185,7 +187,7 @@ export function DomesticPricingTable({
           {ranges.length > 0 && (
             <div className="flex items-center gap-2">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Weight range
+                {mode === "single" ? "Weight" : "Weight range"}
               </Label>
               <Select value={activeKey} onValueChange={(v) => setSelectedKey(v as string)}>
                 <SelectTrigger className="h-10 min-w-[180px]">
@@ -224,7 +226,9 @@ export function DomesticPricingTable({
           onRowClick={(r) => router.push(`/pricing/${r.id}?type=domestic`)}
           isLoading={isLoading}
           pageSize={8}
-          emptyMessage="No domestic pricing rules yet."
+          emptyMessage={
+            mode === "single" ? "No single-value pricing yet." : "No range pricing yet."
+          }
         />
       </div>
     </TooltipProvider>
@@ -234,11 +238,13 @@ export function DomesticPricingTable({
 function PriceCell({
   row,
   activeRange,
+  mode,
 }: {
   row: DomesticPricing;
   activeRange: WeightRange | null;
+  mode: DomesticPricingMode;
 }) {
-  const brackets = validBrackets(row);
+  const brackets = validBrackets(row, mode);
   const match = activeRange
     ? brackets.find((b) => b.minWeight === activeRange.min && b.maxWeight === activeRange.max)
     : undefined;
