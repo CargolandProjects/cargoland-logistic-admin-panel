@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PricingTable } from "@/components/features/pricing/pricing-table";
 import { DomesticPricingTable } from "@/components/features/pricing/domestic-pricing-table";
-import { usePricing } from "@/lib/query/hooks/use-pricing";
+import { usePricing, usePricingBracketsHydration } from "@/lib/query/hooks/use-pricing";
 import { useDomesticPricing } from "@/lib/query/hooks/use-domestic-pricing";
 import { domesticRouteMode } from "@/types/pricing";
 
@@ -33,6 +33,11 @@ function PricingTabs() {
     () => (intl.data ?? []).filter((p) => p.shipmentType === "INTERNATIONAL"),
     [intl.data],
   );
+
+  // The list endpoint truncates each row's brackets to one per freight type;
+  // hydrate the full set from the detail endpoint so the range dropdown/prices
+  // are complete (interim — see docs/pricing-list-brackets-spec.md).
+  const { rows: hydratedInternational } = usePricingBracketsHydration(internationalRows);
 
   const rangeRows = useMemo(
     () => (domestic.data ?? []).filter((r) => domesticRouteMode(r) === "range"),
@@ -70,7 +75,7 @@ function PricingTabs() {
 
         <TabsContent value="international">
           <Card className="p-2">
-            <PricingTable data={internationalRows} isLoading={intl.isLoading} />
+            <PricingTable data={hydratedInternational} isLoading={intl.isLoading} />
           </Card>
         </TabsContent>
 

@@ -10,7 +10,44 @@ export const PRICING_TYPE_OPTIONS = (
   Object.keys(PRICING_TYPE_LABELS) as PricingShipmentType[]
 ).map((value) => ({ value, label: PRICING_TYPE_LABELS[value] }));
 
-/** A pricing rule item (IPricingDoc). Rates are strings in the API. */
+// --- International freight types ---------------------------------------------
+// Single source of truth — the backend enum is expected to change.
+export const FREIGHT_TYPES = ["AIR_FREIGHT", "OCEAN_FREIGHT", "ROAD_FREIGHT"] as const;
+export type FreightType = (typeof FREIGHT_TYPES)[number];
+
+export const FREIGHT_TYPE_LABELS: Record<FreightType, string> = {
+  AIR_FREIGHT: "Air Freight",
+  OCEAN_FREIGHT: "Ocean Freight",
+  ROAD_FREIGHT: "Road Freight",
+};
+
+export const FREIGHT_TYPE_OPTIONS = FREIGHT_TYPES.map((value) => ({
+  value,
+  label: FREIGHT_TYPE_LABELS[value],
+}));
+
+/**
+ * One international pricing bracket (InternationalPricingBracketDto). The wire
+ * shape is FLAT — every bracket carries all three rate strings even though
+ * `freightType` selects the meaningful one (the others are "0").
+ */
+export interface InternationalPricingBracket {
+  minWeight: number;
+  maxWeight: number;
+  freightType: FreightType;
+  airFreightRate: string;
+  roadFreightRate: string;
+  oceanFreightRate: string;
+}
+
+/** The rate string that matches a bracket's freight type. */
+export function bracketRate(b: InternationalPricingBracket): string {
+  if (b.freightType === "AIR_FREIGHT") return b.airFreightRate;
+  if (b.freightType === "OCEAN_FREIGHT") return b.oceanFreightRate;
+  return b.roadFreightRate;
+}
+
+/** A pricing rule item (IPricingDoc). Legacy flat rates are strings in the API. */
 export interface Pricing {
   id: string;
   shipmentType: PricingShipmentType;
@@ -19,6 +56,8 @@ export interface Pricing {
   oceanFreightRate: string;
   fromWhere: string;
   toWhere: string;
+  /** International: weight-ranged brackets (present on the new model). */
+  pricingBrackets?: InternationalPricingBracket[];
   isPopularRoute?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -27,11 +66,14 @@ export interface Pricing {
 /** POST/PUT /admin/pricing body (PricingDto). */
 export interface PricingInput {
   shipmentType: PricingShipmentType;
-  airFreightRate: string;
-  roadFreightRate: string;
-  oceanFreightRate: string;
   fromWhere: string;
   toWhere: string;
+  /** International: the flat bracket array (rates live here, not top-level). */
+  pricingBrackets?: InternationalPricingBracket[];
+  /** Legacy flat rates (domestic in-form edit path only). */
+  airFreightRate?: string;
+  roadFreightRate?: string;
+  oceanFreightRate?: string;
 }
 
 // --- Domestic (local) pricing ------------------------------------------------

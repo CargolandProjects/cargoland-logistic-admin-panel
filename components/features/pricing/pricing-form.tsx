@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Controller, useForm, type Control } from "react-hook-form";
+import { Controller, useFieldArray, useForm, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Plane, Ship, Truck, type LucideIcon } from "lucide-react";
+import { Plane, Ship, Truck, Plus, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
@@ -26,23 +25,22 @@ import {
   useSetPopularRoute,
 } from "@/lib/query/hooks/use-pricing";
 import {
+  FREIGHT_TYPES,
   PRICING_TYPE_LABELS,
   PRICING_TYPE_OPTIONS,
+  type FreightType,
   type Pricing,
+  type PricingInput,
   type PricingShipmentType,
 } from "@/types/pricing";
 import { COUNTRIES, DOMESTIC_COUNTRIES, STATES_BY_COUNTRY, countryForState } from "@/lib/geo";
-
-const schema = z.object({
-  shipmentType: z.enum(["DOMESTIC", "INTERNATIONAL"]),
-  fromWhere: z.string().min(1, "Required"),
-  toWhere: z.string().min(1, "Required"),
-  airFreightRate: z.string().min(1, "Required"),
-  roadFreightRate: z.string().min(1, "Required"),
-  oceanFreightRate: z.string().min(1, "Required"),
-});
-
-type FormValues = z.infer<typeof schema>;
+import {
+  pricingFormSchema,
+  toFreightGroups,
+  toPricingBrackets,
+  type PricingFormValues,
+} from "./pricing-form-schema";
+import { FreightGroupCard } from "./freight-group-card";
 
 type RateName = "airFreightRate" | "oceanFreightRate" | "roadFreightRate";
 const RATE_CARDS: { name: RateName; title: string; badge: string; icon: LucideIcon; accent: string }[] =
@@ -51,6 +49,11 @@ const RATE_CARDS: { name: RateName; title: string; badge: string; icon: LucideIc
     { name: "oceanFreightRate", title: "Ocean Freight Rates", badge: "Ocean", icon: Ship, accent: "bg-indigo-50 text-indigo-600" },
     { name: "roadFreightRate", title: "Road Freight Rates", badge: "Road", icon: Truck, accent: "bg-indigo-50 text-indigo-600" },
   ];
+
+const emptyGroup = (freightType: FreightType) => ({
+  freightType,
+  ranges: [{ minWeight: 0, maxWeight: 0, price: "" }],
+});
 
 function formatUpdated(value?: string) {
   if (!value) return null;
@@ -76,6 +79,8 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
     if (initial) setPopular.mutate({ id: initial.id, isPopularRoute: val });
   };
 
+  const initialGroups = toFreightGroups(initial?.pricingBrackets ?? []);
+
   const {
     register,
     control,
@@ -83,8 +88,8 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
     watch,
     setValue,
     formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  } = useForm<PricingFormValues>({
+    resolver: zodResolver(pricingFormSchema),
     defaultValues: {
       shipmentType: initial?.shipmentType ?? "INTERNATIONAL",
       fromWhere: initial?.fromWhere ?? "",
@@ -92,12 +97,25 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
       airFreightRate: initial?.airFreightRate ?? "",
       roadFreightRate: initial?.roadFreightRate ?? "",
       oceanFreightRate: initial?.oceanFreightRate ?? "",
+      freightGroups: initialGroups.length ? initialGroups : [emptyGroup(FREIGHT_TYPES[0])],
     },
   });
 
   const shipmentType = watch("shipmentType");
   const isDomestic = shipmentType === "DOMESTIC";
   const locationOptions = isDomestic ? STATES_BY_COUNTRY[country] ?? [] : COUNTRIES;
+
+  const {
+    fields: groupFields,
+    append: appendGroup,
+    remove: removeGroup,
+  } = useFieldArray({ control, name: "freightGroups" });
+
+  // Watch groups so the freight-type pickers can exclude types used elsewhere
+  // and the "Add freight type" button can default to the first unused one.
+  const groups = watch("freightGroups") ?? [];
+  const usedTypes = groups.map((g) => g.freightType);
+  const unusedType = FREIGHT_TYPES.find((t) => !usedTypes.includes(t));
 
   const onTypeChange = (val: PricingShipmentType) => {
     // Domestic is a distinct backend resource with its own form. In create mode,
@@ -118,12 +136,29 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
     setValue("toWhere", "");
   };
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = (values: PricingFormValues) => {
+    const body: PricingInput =
+      values.shipmentType === "INTERNATIONAL"
+        ? {
+            shipmentType: "INTERNATIONAL",
+            fromWhere: values.fromWhere,
+            toWhere: values.toWhere,
+            pricingBrackets: toPricingBrackets(values.freightGroups),
+          }
+        : {
+            shipmentType: "DOMESTIC",
+            fromWhere: values.fromWhere,
+            toWhere: values.toWhere,
+            airFreightRate: values.airFreightRate,
+            roadFreightRate: values.roadFreightRate,
+            oceanFreightRate: values.oceanFreightRate,
+          };
+
     if (initial) {
-      update.mutate(values, { onSuccess: () => router.push("/pricing") });
+      update.mutate(body, { onSuccess: () => router.push("/pricing") });
       return;
     }
-    create.mutate(values, {
+    create.mutate(body, {
       onSuccess: async (created) => {
         if (isPopular && created?.id) {
           await setPopular.mutateAsync({ id: created.id, isPopularRoute: true }).catch(() => {});
@@ -219,44 +254,77 @@ export function PricingForm({ initial }: { initial?: Pricing }) {
           </div>
         </div>
 
-        {/* Freight rate cards */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          {RATE_CARDS.map((c) => {
-            const Icon = c.icon;
-            return (
-              <div key={c.name}>
-                <div className="mb-2 flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-foreground">{c.title}</h3>
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium",
-                      c.accent,
-                    )}
-                  >
-                    <Icon className="size-3.5" /> {c.badge}
-                  </span>
-                </div>
-                <div className="rounded-lg bg-secondary/50 p-3">
-                  <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    Base Rate
-                  </Label>
-                  <div className="mt-1 flex items-center gap-1">
-                    <span className="text-sm font-semibold text-foreground">₦</span>
-                    <Input
-                      className="h-8 border-0 bg-transparent px-0 font-semibold shadow-none focus-visible:ring-0"
-                      placeholder="0"
-                      {...register(c.name)}
-                    />
-                    <span className="whitespace-nowrap text-xs text-muted-foreground">/ kg</span>
+        {isDomestic ? (
+          /* Legacy flat rate cards (DOMESTIC in-form edit path). */
+          <div className="grid gap-4 sm:grid-cols-3">
+            {RATE_CARDS.map((c) => {
+              const Icon = c.icon;
+              return (
+                <div key={c.name}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">{c.title}</h3>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium",
+                        c.accent,
+                      )}
+                    >
+                      <Icon className="size-3.5" /> {c.badge}
+                    </span>
                   </div>
-                  {errors[c.name] && (
-                    <p className="text-xs text-destructive">{errors[c.name]?.message}</p>
-                  )}
+                  <div className="rounded-lg bg-secondary/50 p-3">
+                    <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Base Rate
+                    </Label>
+                    <div className="mt-1 flex items-center gap-1">
+                      <span className="text-sm font-semibold text-foreground">₦</span>
+                      <Input
+                        className="h-8 border-0 bg-transparent px-0 font-semibold shadow-none focus-visible:ring-0"
+                        placeholder="0"
+                        {...register(c.name)}
+                      />
+                      <span className="whitespace-nowrap text-xs text-muted-foreground">/ kg</span>
+                    </div>
+                    {errors[c.name] && (
+                      <p className="text-xs text-destructive">{errors[c.name]?.message}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* International: freight-type groups with weight-ranged prices. */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-foreground">Freight rates by weight</h3>
+            </div>
+
+            {groupFields.map((f, gi) => (
+              <FreightGroupCard
+                key={f.id}
+                control={control}
+                index={gi}
+                canRemove={groupFields.length > 1}
+                onRemove={() => removeGroup(gi)}
+                otherUsedTypes={usedTypes.filter((_, i) => i !== gi)}
+              />
+            ))}
+
+            {typeof errors.freightGroups?.message === "string" && (
+              <p className="text-xs text-destructive">{errors.freightGroups.message}</p>
+            )}
+
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => unusedType && appendGroup(emptyGroup(unusedType))}
+              disabled={!unusedType}
+            >
+              <Plus className="size-4" /> Add freight type
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* Save */}
@@ -281,7 +349,7 @@ function LocationField({
   placeholder: string;
   name: "fromWhere" | "toWhere";
   options: string[];
-  control: Control<FormValues>;
+  control: Control<PricingFormValues>;
   error?: string;
 }) {
   return (

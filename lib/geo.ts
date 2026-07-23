@@ -145,7 +145,7 @@ export const CITIES_BY_STATE: Record<string, string[]> = {
   Kebbi: ["Birnin Kebbi", "Argungu", "Yauri", "Zuru", "Jega", "Bunza"],
   Kogi: ["Lokoja", "Okene", "Kabba", "Idah", "Ankpa", "Anyigba", "Dekina"],
   Kwara: ["Ilorin", "Offa", "Omu-Aran", "Lafiagi", "Jebba", "Patigi"],
-  Lagos: ["Ikeja", "Lekki", "Victoria Island", "Yaba", "Surulere", "Ikorodu", "Badagry", "Epe", "Ajah", "Apapa", "Agege", "Oshodi", "Mushin", "Festac", "Alimosho"],
+  Lagos: ["Ikeja", "Lekki", "Victoria Island", "Yaba", "Surulere", "Ikorodu", "Badagry", "Epe", "Ajah", "Apapa", "Agege", "Oshodi", "Mushin", "Festac", "Alimosho", "Lagos Mainland", "Lagos Highland"],
   Nasarawa: ["Lafia", "Keffi", "Akwanga", "Nasarawa", "Karu", "Doma"],
   Niger: ["Minna", "Bida", "Suleja", "Kontagora", "Lapai", "New Bussa"],
   Ogun: ["Abeokuta", "Ijebu Ode", "Sagamu", "Ota", "Ilaro", "Ijebu-Igbo", "Sango Ota"],
